@@ -1,0 +1,76 @@
+{
+    "version": 1,
+    "app": {
+        "name": "blog",
+        "stack": "livewire",
+        "ui": "mary"
+    },
+    "models": {
+        "Post": {
+            "fields": {
+                "title": "string:200",
+                "slug": "string:200 unique",
+                "excerpt": "text nullable",
+                "body": "longText",
+                "featured_image": "string:500 nullable",
+                "status": "enum:draft,published,archived default:draft",
+                "published_at": "timestamp nullable",
+                "author_id": "id:user"
+            },
+            "relationships": {
+                "author": "belongsTo:User",
+                "categories": "belongsToMany:Category",
+                "tags": "belongsToMany:Tag",
+                "comments": "hasMany:Comment"
+            }
+        },
+        "Category": {
+            "fields": {
+                "name": "string:100",
+                "slug": "string:100 unique",
+                "description": "text nullable"
+            },
+            "relationships": {
+                "posts": "belongsToMany:Post"
+            }
+        },
+        "Tag": {
+            "fields": {
+                "name": "string:50",
+                "slug": "string:50 unique"
+            },
+            "relationships": {
+                "posts": "belongsToMany:Post"
+            }
+        },
+        "Comment": {
+            "fields": {
+                "post_id": "id:post",
+                "author_id": "id:user nullable",
+                "guest_name": "string:100 nullable",
+                "body": "text",
+                "is_approved": "boolean default:false"
+            },
+            "relationships": {
+                "post": "belongsTo:Post",
+                "author": "belongsTo:User"
+            }
+        }
+    },
+    "controllers": {
+        "Post": { "resource": "web" },
+        "Category": { "resource": "web" },
+        "Comment": { "resource": "web" }
+    },
+    "pages": {
+        "posts.index": { "layout": "default" },
+        "posts.show": { "layout": "default" },
+        "admin.posts.index": { "layout": "sidebar" },
+        "admin.posts.create": { "layout": "sidebar" },
+        "admin.posts.edit": { "layout": "sidebar" }
+    },
+    "recipes": [
+        { "name": "media-uploads", "package": "spatie/laravel-medialibrary" },
+        { "name": "search", "package": "laravel/scout" }
+    ]
+}

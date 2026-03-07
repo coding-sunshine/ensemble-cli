@@ -1,0 +1,96 @@
+{
+    "version": 1,
+    "app": {
+        "name": "crm",
+        "stack": "livewire",
+        "ui": "mary"
+    },
+    "models": {
+        "Contact": {
+            "fields": {
+                "first_name": "string:100",
+                "last_name": "string:100",
+                "email": "string:200 nullable",
+                "phone": "string:50 nullable",
+                "company_id": "id:company nullable",
+                "title": "string:100 nullable",
+                "source": "enum:website,referral,cold_call,social,other default:other",
+                "notes": "text nullable"
+            },
+            "relationships": {
+                "company": "belongsTo:Company",
+                "deals": "hasMany:Deal",
+                "activities": "morphMany:Activity",
+                "assignee": "belongsTo:User"
+            }
+        },
+        "Company": {
+            "fields": {
+                "name": "string:200",
+                "website": "string:200 nullable",
+                "industry": "string:100 nullable",
+                "size": "enum:1-10,11-50,51-200,201-500,500+ nullable",
+                "address": "text nullable"
+            },
+            "relationships": {
+                "contacts": "hasMany:Contact",
+                "deals": "hasMany:Deal"
+            }
+        },
+        "Deal": {
+            "fields": {
+                "title": "string:200",
+                "value": "decimal:12,2 nullable",
+                "stage": "enum:lead,qualified,proposal,negotiation,won,lost default:lead",
+                "contact_id": "id:contact",
+                "company_id": "id:company nullable",
+                "assigned_to": "id:user nullable",
+                "expected_close_date": "date nullable",
+                "closed_at": "timestamp nullable"
+            },
+            "relationships": {
+                "contact": "belongsTo:Contact",
+                "company": "belongsTo:Company",
+                "assignee": "belongsTo:User",
+                "activities": "morphMany:Activity"
+            }
+        },
+        "Activity": {
+            "fields": {
+                "type": "enum:note,call,email,meeting,task",
+                "subject": "string:200",
+                "description": "text nullable",
+                "due_at": "timestamp nullable",
+                "completed_at": "timestamp nullable",
+                "user_id": "id:user",
+                "activityable_id": "integer",
+                "activityable_type": "string:200"
+            },
+            "relationships": {
+                "user": "belongsTo:User",
+                "activityable": "morphTo"
+            }
+        }
+    },
+    "controllers": {
+        "Contact": { "resource": "web" },
+        "Company": { "resource": "web" },
+        "Deal": { "resource": "web" },
+        "Activity": { "resource": "web" }
+    },
+    "pages": {
+        "dashboard": { "layout": "sidebar" },
+        "contacts.index": { "layout": "sidebar" },
+        "contacts.show": { "layout": "sidebar" },
+        "companies.index": { "layout": "sidebar" },
+        "deals.index": { "layout": "sidebar" },
+        "deals.pipeline": { "layout": "sidebar" },
+        "activities.index": { "layout": "sidebar" }
+    },
+    "recipes": [
+        { "name": "roles-permissions", "package": "spatie/laravel-permission" },
+        { "name": "activity-log", "package": "spatie/laravel-activitylog" },
+        { "name": "search", "package": "laravel/scout" },
+        { "name": "notifications", "package": null }
+    ]
+}

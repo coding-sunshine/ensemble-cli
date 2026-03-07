@@ -1,18 +1,26 @@
 {
-    "name": "laravel/installer",
-    "description": "Laravel application installer.",
+    "name": "coding-sunshine/ensemble-cli",
+    "description": "AI-native Laravel application ensemble. Extends the Laravel installer with AI-powered schema generation and full-stack code scaffolding.",
     "keywords": [
-        "laravel"
+        "laravel",
+        "ensemble",
+        "ai",
+        "code-generation",
+        "scaffold"
     ],
     "license": "MIT",
     "authors": [
         {
             "name": "Taylor Otwell",
             "email": "taylor@laravel.com"
+        },
+        {
+            "name": "Coding Sunshine"
         }
     ],
     "require": {
         "php": "^8.2",
+        "guzzlehttp/guzzle": "^7.9",
         "illuminate/filesystem": "^10.20|^11.0|^12.0|^13.0",
         "illuminate/support": "^10.20|^11.0|^12.0|^13.0",
         "laravel/prompts": "^0.1.18|^0.2.0|^0.3.0",
@@ -25,16 +33,16 @@
         "phpunit/phpunit": "^10.4"
     },
     "bin": [
-        "bin/laravel"
+        "bin/ensemble"
     ],
     "autoload": {
         "psr-4": {
-            "Laravel\\Installer\\Console\\": "src/"
+            "CodingSunshine\\Ensemble\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Laravel\\Installer\\Console\\Tests\\": "tests/"
+            "CodingSunshine\\Ensemble\\Tests\\": "tests/"
         }
     },
     "config": {

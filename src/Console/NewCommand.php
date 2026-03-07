@@ -1,12 +1,16 @@
 <?php
 
-namespace Laravel\Installer\Console;
+namespace CodingSunshine\Ensemble\Console;
 
+use CodingSunshine\Ensemble\AI\ConversationEngine;
+use CodingSunshine\Ensemble\Console\Enums\NodePackageManager;
+use CodingSunshine\Ensemble\Scaffold\StarterKitResolver;
+use CodingSunshine\Ensemble\Schema\SchemaWriter;
+use CodingSunshine\Ensemble\Schema\TemplateRegistry;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Composer;
 use Illuminate\Support\ProcessUtils;
 use Illuminate\Support\Str;
-use Laravel\Installer\Console\Enums\NodePackageManager;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use RuntimeException;
@@ -22,13 +26,18 @@ use Throwable;
 
 use function Illuminate\Filesystem\join_paths;
 use function Laravel\Prompts\confirm;
+use function Laravel\Prompts\info;
 use function Laravel\Prompts\select;
 use function Laravel\Prompts\text;
+use function Laravel\Prompts\warning;
 
 class NewCommand extends Command
 {
     use Concerns\ConfiguresPrompts;
+    use Concerns\DisplaysDryRun;
     use Concerns\InteractsWithHerdOrValet;
+    use Concerns\ResolvesAIProvider;
+    use Concerns\TracksProgress;
 
     const DATABASE_DRIVERS = ['mysql', 'mariadb', 'pgsql', 'sqlite', 'sqlsrv'];
 
@@ -40,6 +49,13 @@ class NewCommand extends Command
     protected $composer;
 
     /**
+     * The generated schema, if any.
+     *
+     * @var array<string, mixed>|null
+     */
+    protected ?array $schema = null;
+
+    /**
      * Configure the command options.
      *
      * @return void
@@ -48,7 +64,7 @@ class NewCommand extends Command
     {
         $this
             ->setName('new')
-            ->setDescription('Create a new Laravel application')
+            ->setDescription('Create a new Laravel application with optional AI-powered scaffolding')
             ->addArgument('name', InputArgument::REQUIRED)
             ->addOption('dev', null, InputOption::VALUE_NONE, 'Install the latest "development" release')
             ->addOption('git', null, InputOption::VALUE_NONE, 'Initialize a Git repository')
@@ -72,7 +88,15 @@ class NewCommand extends Command
             ->addOption('boost', null, InputOption::VALUE_NONE, 'Install Laravel Boost to improve AI assisted coding')
             ->addOption('no-boost', null, InputOption::VALUE_NONE, 'Skip Laravel Boost installation')
             ->addOption('using', null, InputOption::VALUE_OPTIONAL, 'Install a custom starter kit from a community maintained package')
-            ->addOption('force', 'f', InputOption::VALUE_NONE, 'Forces install even if the directory already exists');
+            ->addOption('force', 'f', InputOption::VALUE_NONE, 'Forces install even if the directory already exists')
+            ->addOption('from', null, InputOption::VALUE_REQUIRED, 'Path to an existing ensemble.json schema file')
+            ->addOption('template', 't', InputOption::VALUE_REQUIRED, 'Use a bundled template: '.implode(', ', TemplateRegistry::names()))
+            ->addOption('no-ai', null, InputOption::VALUE_NONE, 'Skip AI-powered scaffolding, create a plain Laravel project')
+            ->addOption('provider', null, InputOption::VALUE_REQUIRED, 'AI provider: anthropic, openai, openrouter, ollama')
+            ->addOption('model', null, InputOption::VALUE_REQUIRED, 'Override the default AI model for the chosen provider')
+            ->addOption('api-key', null, InputOption::VALUE_REQUIRED, 'API key for the AI provider')
+            ->addOption('ai-budget', null, InputOption::VALUE_REQUIRED, 'AI budget level for ensemble:build (none, low, medium, high)')
+            ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Show what would happen without creating anything');
     }
 
     /**
@@ -91,8 +115,6 @@ class NewCommand extends Command
         $this->displayHeader($output);
 
         $this->ensureExtensionsAreAvailable($input, $output);
-
-        $this->checkForUpdate($input, $output);
 
         if (! $input->getArgument('name')) {
             $input->setArgument('name', text(
@@ -121,7 +143,11 @@ class NewCommand extends Command
             );
         }
 
-        if (! $this->usingStarterKit($input)) {
+        $this->resolveSchema($input, $output);
+
+        if ($this->schema && $this->applySchemaStarterKit($input)) {
+            // Schema determined the starter kit; skip interactive prompts for kit selection
+        } elseif (! $this->usingStarterKit($input)) {
             match (select(
                 label: 'Which starter kit would you like to install?',
                 options: [
@@ -183,7 +209,151 @@ class NewCommand extends Command
     }
 
     /**
-     * Display the Laravel header with gradient colors.
+     * Resolve the schema from --from file or AI conversation.
+     */
+    protected function resolveSchema(InputInterface $input, ?OutputInterface $output = null): void
+    {
+        if ($fromPath = $input->getOption('from')) {
+            $this->schema = SchemaWriter::read($fromPath);
+            info("Loaded schema from {$fromPath}");
+
+            return;
+        }
+
+        if ($templateName = $input->getOption('template')) {
+            $this->schema = TemplateRegistry::load($templateName);
+            info("Loaded \"{$templateName}\" template.");
+
+            return;
+        }
+
+        if ($input->getOption('no-ai')) {
+            return;
+        }
+
+        if (! $input->isInteractive()) {
+            return;
+        }
+
+        $wantsAi = confirm(
+            label: 'Would you like AI to help design your application?',
+            default: true,
+        );
+
+        if (! $wantsAi) {
+            return;
+        }
+
+        $provider = $this->resolveProvider($input);
+        $engine = new ConversationEngine($provider, $output);
+        $result = $engine->run();
+
+        if ($result === null) {
+            return;
+        }
+
+        $this->schema = $result;
+    }
+
+    /**
+     * Ensure the schema is loaded when interact() was skipped (non-interactive mode).
+     */
+    protected function ensureSchemaLoaded(InputInterface $input): void
+    {
+        if ($this->schema !== null) {
+            return;
+        }
+
+        if ($fromPath = $input->getOption('from')) {
+            $this->schema = SchemaWriter::read($fromPath);
+
+            return;
+        }
+
+        if ($templateName = $input->getOption('template')) {
+            $this->schema = TemplateRegistry::load($templateName);
+        }
+    }
+
+    /**
+     * When running non-interactively with a schema, auto-derive sensible defaults
+     * so that `ensemble new my-app --from=schema.json -n` works fully headless.
+     */
+    protected function applyHeadlessDefaults(InputInterface $input): void
+    {
+        if ($input->isInteractive() || ! $this->schema) {
+            return;
+        }
+
+        if (! $this->usingStarterKit($input)) {
+            $this->applySchemaStarterKit($input);
+        }
+
+        if (! $input->getOption('phpunit') && ! $input->getOption('pest')) {
+            $input->setOption('pest', true);
+        }
+
+        if (! $input->getOption('database')) {
+            $input->setOption('database', 'sqlite');
+        }
+    }
+
+    /**
+     * Calculate how many major steps the build will perform for the progress indicator.
+     */
+    protected function calculateTotalSteps(InputInterface $input): int
+    {
+        $steps = 1; // Creating Laravel project
+
+        $steps++; // Configuring environment (always)
+
+        if ($input->getOption('git') || $input->getOption('github') !== false) {
+            $steps++; // Git init
+        }
+
+        if ($input->getOption('pest')) {
+            $steps++; // Pest
+        }
+
+        if ($input->getOption('boost') && ! $input->getOption('no-boost')) {
+            $steps++; // Boost
+        }
+
+        $steps++; // Node dependencies (always counted, may be skipped)
+
+        $steps++; // Install Ensemble package (always)
+
+        if ($this->schema) {
+            $steps++; // Ensemble schema scaffolding
+        }
+
+        return $steps;
+    }
+
+    /**
+     * Apply starter kit selection from the schema. Returns true if successfully applied.
+     */
+    protected function applySchemaStarterKit(InputInterface $input): bool
+    {
+        $stack = $this->schema['app']['stack'] ?? null;
+
+        if (! $stack || ! StarterKitResolver::isValid($stack)) {
+            return false;
+        }
+
+        match ($stack) {
+            'react' => $input->setOption('react', true),
+            'svelte' => $input->setOption('svelte', true),
+            'vue' => $input->setOption('vue', true),
+            'livewire' => $input->setOption('livewire', true),
+            default => null,
+        };
+
+        return $this->usingStarterKit($input);
+    }
+
+    /**
+     * Display the Ensemble header with gradient colors.
      *
      * @param  \Symfony\Component\Console\Output\OutputInterface  $output
      * @return void
@@ -193,23 +363,21 @@ class NewCommand extends Command
         $output->writeln('');
 
         $lines = [
-            ' ██╗       █████╗  ██████╗   █████╗  ██╗   ██╗ ███████╗ ██╗',
-            ' ██║      ██╔══██╗ ██╔══██╗ ██╔══██╗ ██║   ██║ ██╔════╝ ██║',
-            ' ██║      ███████║ ██████╔╝ ███████║ ██║   ██║ █████╗   ██║',
-            ' ██║      ██╔══██║ ██╔══██╗ ██╔══██║ ╚██╗ ██╔╝ ██╔══╝   ██║',
-            ' ███████╗ ██║  ██║ ██║  ██║ ██║  ██║  ╚████╔╝  ███████╗ ███████╗',
-            ' ╚══════╝ ╚═╝  ╚═╝ ╚═╝  ╚═╝ ╚═╝  ╚═╝   ╚═══╝   ╚══════╝ ╚══════╝',
+            ' ███████╗ ███╗   ██╗ ███████╗ ███████╗ ███╗   ███╗ ██████╗  ██╗      ███████╗',
+            ' ██╔════╝ ████╗  ██║ ██╔════╝ ██╔════╝ ████╗ ████║ ██╔══██╗ ██║      ██╔════╝',
+            ' █████╗   ██╔██╗ ██║ ███████╗ █████╗   ██╔████╔██║ ██████╔╝ ██║      █████╗  ',
+            ' ██╔══╝   ██║╚██╗██║ ╚════██║ ██╔══╝   ██║╚██╔╝██║ ██╔══██╗ ██║      ██╔══╝  ',
+            ' ███████╗ ██║ ╚████║ ███████║ ███████╗ ██║ ╚═╝ ██║ ██████╔╝ ███████╗ ███████╗',
+            ' ╚══════╝ ╚═╝  ╚═══╝ ╚══════╝ ╚══════╝ ╚═╝     ╚═╝ ╚═════╝  ╚══════╝ ╚══════╝',
         ];
 
         $gradients = [
-            'Red' => [196, 160, 124, 88, 52, 88],
-            'Gray' => [250, 248, 245, 243, 240, 238],
-            'Ocean' => [81, 75, 69, 63, 57, 21],
-            'Vaporwave' => [213, 177, 141, 105, 69, 39],
-            'Sunset' => [214, 208, 202, 196, 160, 124],
-            'Aurora' => [51, 50, 49, 48, 47, 41],
             'Ember' => [227, 221, 215, 209, 203, 197],
+            'Ocean' => [81, 75, 69, 63, 57, 21],
+            'Aurora' => [51, 50, 49, 48, 47, 41],
             'Cyberpunk' => [201, 165, 129, 93, 57, 21],
+            'Sunset' => [214, 208, 202, 196, 160, 124],
+            'Vaporwave' => [213, 177, 141, 105, 69, 39],
         ];
 
         $themeName = array_rand($gradients);
@@ -254,194 +422,6 @@ class NewCommand extends Command
     }
 
     /**
-     * Check for newer version of the installer package.
-     *
-     * @param  \Symfony\Component\Console\Input\InputInterface  $input
-     * @param  \Symfony\Component\Console\Output\OutputInterface  $output
-     * @return void
-     */
-    protected function checkForUpdate(InputInterface $input, OutputInterface $output)
-    {
-        $package = 'laravel/installer';
-        $version = $this->getApplication()->getVersion();
-        $versionData = $this->getLatestVersionData($package);
-
-        if ($versionData === false) {
-            return;
-        }
-
-        $data = json_decode($versionData, true);
-        $latestVersion = ltrim($data['packages'][$package][0]['version'], 'v');
-
-        if (version_compare($version, $latestVersion) !== -1) {
-            return;
-        }
-
-        $output->writeln('');
-        $output->writeln("  <bg=yellow;fg=black> WARN </> A new version of the Laravel installer is available. You have version {$version} installed, the latest version is {$latestVersion}.");
-
-        $laravelInstallerPath = (new ExecutableFinder())->find('laravel') ?? '';
-        $isHerd = str_contains($laravelInstallerPath, DIRECTORY_SEPARATOR.'Herd'.DIRECTORY_SEPARATOR);
-        // Intalled via php.new
-        $isHerdLite = str_contains($laravelInstallerPath, DIRECTORY_SEPARATOR.'herd-lite'.DIRECTORY_SEPARATOR);
-
-        if ($isHerd) {
-            $this->confirmUpdateAndContinue(
-                'To update, open <options=bold>Herd</> > <options=bold>Settings</> > <options=bold>PHP</> > <options=bold>Laravel Installer</> '
-                    .'and click the <options=bold>"Update"</> button.',
-                $input,
-                $output
-            );
-
-            return;
-        }
-
-        if ($isHerdLite) {
-            $message = match (PHP_OS_FAMILY) {
-                'Windows' => 'Set-ExecutionPolicy Bypass -Scope Process -Force; '
-                    .'[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; '
-                    ."iex ((New-Object System.Net.WebClient).DownloadString('https://php.new/install/windows'))",
-                'Darwin' => '/bin/bash -c "$(curl -fsSL https://php.new/install/mac)"',
-                default => '/bin/bash -c "$(curl -fsSL https://php.new/install/linux)"',
-            };
-
-            $output->writeln('');
-            $output->writeln('  To update, run the following command in your terminal:');
-
-            $this->confirmUpdateAndContinue($message, $input, $output);
-
-            return;
-        }
-
-        if (confirm(label: 'Would you like to update now?')) {
-            $this->runCommands(['composer global update laravel/installer'], $input, $output);
-            $this->proxyLaravelNew($input, $output);
-        }
-    }
-
-    /**
-     * Allow the user to update the Laravel Installer and continue.
-     *
-     * @param  string  $message
-     * @param  \Symfony\Component\Console\Input\InputInterface  $input
-     * @param  \Symfony\Component\Console\Output\OutputInterface  $output
-     * @return void
-     */
-    protected function confirmUpdateAndContinue(string $message, InputInterface $input, OutputInterface $output): void
-    {
-        $output->writeln('');
-        $output->writeln("  {$message}");
-
-        $updated = confirm(
-            label: 'Would you like to update now?',
-            yes: 'I have updated',
-            no: 'Not now',
-        );
-
-        if (! $updated) {
-            return;
-        }
-
-        $this->proxyLaravelNew($input, $output);
-    }
-
-    /**
-     * Proxy the command to the globally installed Laravel Installer.
-     *
-     * @param  \Symfony\Component\Console\Input\InputInterface  $input
-     * @param  \Symfony\Component\Console\Output\OutputInterface  $output
-     * @return void
-     */
-    protected function proxyLaravelNew(InputInterface $input, OutputInterface $output): void
-    {
-        $output->writeln('');
-        $this->runCommands(['laravel '.$input], $input, $output, workingPath: getcwd());
-        exit;
-    }
-
-    /**
-     * Get the latest version of the installer package from Packagist.
-     *
-     * @param  string  $package
-     * @return string|false
-     */
-    protected function getLatestVersionData(string $package): string|false
-    {
-        $packagePrefix = str_replace('/', '-', $package);
-        $cachedPath = join_paths(sys_get_temp_dir(), $packagePrefix.'-version-check.json');
-        $lastModifiedPath = join_paths(sys_get_temp_dir(), $packagePrefix.'-last-modified');
-
-        $cacheExists = file_exists($cachedPath);
-        $lastModifiedExists = file_exists($lastModifiedPath);
-
-        $cacheLastWrittenAt = $cacheExists ? filemtime($cachedPath) : 0;
-        $lastModifiedResponse = $lastModifiedExists ? file_get_contents($lastModifiedPath) : null;
-
-        if ($cacheLastWrittenAt > time() - 86400) {
-            // Cache is less than 24 hours old, use it
-            return file_get_contents($cachedPath);
-        }
-
-        $curl = curl_init();
-
-        $headers = ['User-Agent: Laravel Installer'];
-
-        if ($lastModifiedResponse) {
-            $headers[] = "If-Modified-Since: {$lastModifiedResponse}";
-        }
-
-        curl_setopt_array($curl, [
-            CURLOPT_URL => "https://repo.packagist.org/p2/{$package}.json",
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HEADER => true,
-            CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_TIMEOUT => 3,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_SSL_VERIFYPEER => true,
-        ]);
-
-        try {
-            $response = curl_exec($curl);
-            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-            $headerSize = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
-            $error = curl_error($curl);
-
-            unset($curl);
-        } catch (Throwable $e) {
-            return false;
-        }
-
-        if ($error) {
-            return false;
-        }
-
-        $responseHeaders = substr($response, 0, $headerSize);
-        $result = substr($response, $headerSize);
-
-        $lastModifiedFromResponse = null;
-
-        if (preg_match('/^Last-Modified:\s*(.+)$/mi', $responseHeaders, $matches)) {
-            $lastModifiedFromResponse = trim($matches[1]);
-        }
-
-        file_put_contents($lastModifiedPath, $lastModifiedFromResponse);
-
-        if ($httpCode === 304 && $cacheExists) {
-            touch($cachedPath);
-
-            return file_get_contents($cachedPath);
-        }
-
-        if ($httpCode === 200 && $result !== false) {
-            file_put_contents($cachedPath, $result);
-
-            return $result;
-        }
-
-        return ($cacheExists) ? file_get_contents($cachedPath) : false;
-    }
-
-    /**
      * Execute the command.
      *
      * @param  \Symfony\Component\Console\Input\InputInterface  $input
@@ -450,9 +430,16 @@ class NewCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $this->pingNewInstallUrl();
-
         $this->validateDatabaseOption($input);
+
+        $this->ensureSchemaLoaded($input);
+        $this->applyHeadlessDefaults($input);
+
+        if ($input->getOption('dry-run') && $this->schema) {
+            $this->displayDryRun($output, $this->schema, 'new');
+
+            return Command::SUCCESS;
+        }
 
         $name = rtrim($input->getArgument('name'), '/\\');
 
@@ -469,6 +456,8 @@ class NewCommand extends Command
         if ($input->getOption('force') && $directory === '.') {
             throw new RuntimeException('Cannot use --force option when using current directory for installation!');
         }
+
+        $this->initializeProgress($this->calculateTotalSteps($input));
 
         $composer = $this->findComposer();
         $phpBinary = $this->phpBinary();
@@ -511,8 +500,12 @@ class NewCommand extends Command
             $commands[] = "chmod 755 \"$directory/artisan\"";
         }
 
+        $this->step($output, 'Creating Laravel project...');
+
         if (($process = $this->runCommands($commands, $input, $output))->isSuccessful()) {
             if ($name !== '.') {
+                $this->step($output, 'Configuring environment...');
+
                 $this->replaceInFile(
                     'APP_URL=http://localhost',
                     'APP_URL='.$this->generateAppUrl($name, $directory),
@@ -540,14 +533,17 @@ class NewCommand extends Command
             }
 
             if ($input->getOption('git') || $input->getOption('github') !== false) {
+                $this->step($output, 'Initializing Git repository...');
                 $this->createRepository($directory, $input, $output);
             }
 
             if ($input->getOption('pest')) {
+                $this->step($output, 'Installing Pest testing framework...');
                 $this->installPest($directory, $input, $output);
             }
 
             if ($input->getOption('boost') && ! $input->getOption('no-boost')) {
+                $this->step($output, 'Installing Laravel Boost...');
                 $this->installBoost($directory, $input, $output);
             }
 
@@ -577,12 +573,21 @@ class NewCommand extends Command
             }
 
             if ($runPackageManager) {
+                $this->step($output, 'Installing Node dependencies...');
                 $this->runCommands([$packageManager->installCommand(), $packageManager->buildCommand()], $input, $output, workingPath: $directory);
             }
 
             if ($input->getOption('boost') && ! $input->getOption('no-boost')) {
                 $this->configureBoostComposerScript();
                 $this->commitChanges('Configure Boost post-update script', $directory, $input, $output);
+            }
+
+            $this->step($output, 'Installing Ensemble...');
+            $this->installEnsemblePackage($directory, $input, $output);
+
+            if ($this->schema) {
+                $this->step($output, 'Scaffolding with Ensemble...');
+                $this->applyEnsembleSchema($directory, $input, $output);
             }
 
             $output->writeln("  <bg=blue;fg=white> INFO </> Application ready in <options=bold>[{$name}]</>. You can start your local development using:".PHP_EOL);
@@ -608,26 +613,87 @@ class NewCommand extends Command
     }
 
     /**
-     * Ping the new install URL.
-     *
-     * @return void
+     * Install the coding-sunshine/ensemble companion package into the project.
      */
-    protected function pingNewInstallUrl(): void
+    protected function installEnsemblePackage(string $directory, InputInterface $input, OutputInterface $output): void
     {
-        $curl = curl_init();
+        try {
+            $composerBinary = $this->findComposer();
+            $this->runCommands(
+                [$composerBinary.' require coding-sunshine/ensemble --dev'],
+                $input,
+                $output,
+                workingPath: $directory,
+            );
+        } catch (Throwable) {
+            warning('Could not install coding-sunshine/ensemble. You can install it later with:');
+            $output->writeln('  <options=bold>composer require coding-sunshine/ensemble --dev</>');
+            $output->writeln('');
+        }
+    }
 
-        curl_setopt_array($curl, [
-            CURLOPT_URL => 'https://laravel.com/new-install',
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => ['User-Agent: Laravel Installer'],
-            CURLOPT_TIMEOUT => 3,
-        ]);
+    /**
+     * Write the schema, install recipe packages, and run ensemble:build + migrations.
+     */
+    protected function applyEnsembleSchema(string $directory, InputInterface $input, OutputInterface $output): void
+    {
+        $schemaPath = $directory.'/ensemble.json';
+        SchemaWriter::write($schemaPath, $this->schema);
+        info('Wrote ensemble.json to project root.');
+
+        @mkdir($directory.'/.ensemble', 0755, true);
+
+        $this->installRecipePackages($directory, $input, $output);
 
         try {
-            curl_exec($curl);
-        } catch (Throwable $e) {
-            //
+            $budgetFlag = $input->getOption('ai-budget')
+                ? ' --budget='.$input->getOption('ai-budget')
+                : '';
+
+            $this->runCommands([
+                $this->phpBinary().' artisan ensemble:build --no-interaction'.$budgetFlag,
+            ], $input, $output, workingPath: $directory);
+
+            $this->runCommands([
+                $this->phpBinary().' artisan migrate --force',
+            ], $input, $output, workingPath: $directory);
+
+            $this->runCommands([
+                $this->phpBinary().' artisan db:seed --force',
+            ], $input, $output, workingPath: $directory);
+
+            $this->commitChanges('Scaffold application with Ensemble', $directory, $input, $output);
+        } catch (Throwable) {
+            warning('Could not run ensemble:build. You can run it manually with:');
+            $output->writeln('  <options=bold>php artisan ensemble:build</>');
+            $output->writeln('');
         }
+    }
+
+    /**
+     * Install Composer packages referenced by the schema recipes.
+     */
+    protected function installRecipePackages(string $directory, InputInterface $input, OutputInterface $output): void
+    {
+        if (! isset($this->schema['recipes']) || empty($this->schema['recipes'])) {
+            return;
+        }
+
+        $packages = array_filter(array_column($this->schema['recipes'], 'package'));
+
+        if (empty($packages)) {
+            return;
+        }
+
+        $composerBinary = $this->findComposer();
+        $packageList = implode(' ', $packages);
+
+        $this->runCommands(
+            [$composerBinary.' require '.$packageList],
+            $input,
+            $output,
+            workingPath: $directory,
+        );
     }
 
     /**
@@ -639,7 +705,6 @@ class NewCommand extends Command
      */
     protected function determinePackageManager(string $directory, InputInterface $input): array
     {
-        // If they passed a specific flag, respect the user's choice...
         if ($input->getOption('pnpm')) {
             return [NodePackageManager::PNPM, true];
         }
@@ -656,7 +721,6 @@ class NewCommand extends Command
             return [NodePackageManager::NPM, true];
         }
 
-        // Check for an existing lock file to determine the package manager...
         foreach (NodePackageManager::cases() as $packageManager) {
             if ($packageManager === NodePackageManager::NPM) {
                 continue;
@@ -713,7 +777,6 @@ class NewCommand extends Command
         if ($database === 'sqlite') {
             $environment = file_get_contents($directory.'/.env');
 
-            // If database options aren't commented, comment them for SQLite...
             if (! str_contains($environment, '# DB_HOST=127.0.0.1')) {
                 $this->commentDatabaseConfigurationForSqlite($directory);
 
@@ -723,7 +786,6 @@ class NewCommand extends Command
             return;
         }
 
-        // Any commented database configuration options should be uncommented when not on SQLite...
         $this->uncommentDatabaseConfiguration($directory);
 
         $defaultPorts = [
@@ -845,7 +907,6 @@ class NewCommand extends Command
         )->keys()->first();
 
         if (! $input->getOption('database') && $this->usingStarterKit($input)) {
-            // Starter kits will already be migrated in post composer create-project command...
             $migrate = false;
 
             $input->setOption('database', 'sqlite');

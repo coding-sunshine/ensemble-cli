@@ -1,6 +1,6 @@
 <?php
 
-use Laravel\Installer\Console\Concerns\InteractsWithHerdOrValet;
+use CodingSunshine\Ensemble\Console\Concerns\InteractsWithHerdOrValet;
 use PHPUnit\Framework\TestCase;
 
 class InteractsWithHerdOrValetTest extends TestCase

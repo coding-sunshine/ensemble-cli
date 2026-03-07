@@ -1,0 +1,60 @@
+{
+    "version": 1,
+    "app": {
+        "name": "api-service",
+        "stack": "livewire",
+        "ui": "none"
+    },
+    "models": {
+        "ApiToken": {
+            "fields": {
+                "user_id": "id:user",
+                "name": "string:200",
+                "token": "string:64 unique",
+                "abilities": "json nullable",
+                "last_used_at": "timestamp nullable",
+                "expires_at": "timestamp nullable"
+            },
+            "relationships": {
+                "user": "belongsTo:User"
+            }
+        },
+        "Webhook": {
+            "fields": {
+                "user_id": "id:user",
+                "url": "string:500",
+                "events": "json",
+                "secret": "string:64",
+                "is_active": "boolean default:true",
+                "last_triggered_at": "timestamp nullable",
+                "failure_count": "integer default:0"
+            },
+            "relationships": {
+                "user": "belongsTo:User",
+                "deliveries": "hasMany:WebhookDelivery"
+            }
+        },
+        "WebhookDelivery": {
+            "fields": {
+                "webhook_id": "id:webhook",
+                "event": "string:100",
+                "payload": "json",
+                "response_code": "integer nullable",
+                "response_body": "text nullable",
+                "delivered_at": "timestamp nullable"
+            },
+            "relationships": {
+                "webhook": "belongsTo:Webhook"
+            }
+        }
+    },
+    "controllers": {
+        "ApiToken": { "resource": "api" },
+        "Webhook": { "resource": "api" }
+    },
+    "pages": {},
+    "recipes": [
+        { "name": "api-auth", "package": "laravel/sanctum" },
+        { "name": "activity-log", "package": "spatie/laravel-activitylog" }
+    ]
+}

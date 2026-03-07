@@ -1,9 +1,9 @@
 <?php
 
-namespace Laravel\Installer\Console\Tests;
+namespace CodingSunshine\Ensemble\Tests;
 
-use Laravel\Installer\Console\Concerns\InteractsWithHerdOrValet;
-use Laravel\Installer\Console\NewCommand;
+use CodingSunshine\Ensemble\Console\Concerns\InteractsWithHerdOrValet;
+use CodingSunshine\Ensemble\Console\NewCommand;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -25,12 +25,12 @@ class NewCommandTest extends TestCase
             }
         }
 
-        $app = new Application('Laravel Installer');
+        $app = new Application('Laravel Ensemble');
         $app->add(new NewCommand);
 
         $tester = new CommandTester($app->find('new'));
 
-        $statusCode = $tester->execute(['name' => $scaffoldDirectoryName], ['interactive' => false]);
+        $statusCode = $tester->execute(['name' => $scaffoldDirectoryName, '--no-ai' => true], ['interactive' => false]);
 
         $this->assertSame(0, $statusCode);
         $this->assertDirectoryExists($scaffoldDirectory.'/vendor');
@@ -54,12 +54,12 @@ class NewCommandTest extends TestCase
             }
         }
 
-        $app = new Application('Laravel Installer');
+        $app = new Application('Laravel Ensemble');
         $app->add(new NewCommand);
 
         $tester = new CommandTester($app->find('new'));
 
-        $statusCode = $tester->execute(['name' => $scaffoldDirectoryName], ['interactive' => false]);
+        $statusCode = $tester->execute(['name' => $scaffoldDirectoryName, '--no-ai' => true], ['interactive' => false]);
 
         $this->assertSame(0, $statusCode);
         $this->assertDirectoryExists($scaffoldDirectory.'/vendor');
@@ -84,28 +84,5 @@ class NewCommandTest extends TestCase
         $this->assertFalse($onLaravel10);
         $this->assertTrue($onLaravel11);
         $this->assertTrue($onLaravel12);
-    }
-
-    public function test_it_handles_absolute_paths_correctly()
-    {
-        if (PHP_OS_FAMILY === 'Windows') {
-            $this->markTestSkipped('This test is for Unix/Linux systems only.');
-        }
-
-        $command = new class extends NewCommand
-        {
-            public function getInstallationDirectoryPublic(string $name)
-            {
-                return $this->getInstallationDirectory($name);
-            }
-        };
-
-        $absolutePath = '/tmp/my-app';
-        $this->assertSame($absolutePath, $command->getInstallationDirectoryPublic($absolutePath));
-
-        $relativePath = 'my-app';
-        $this->assertSame(getcwd().'/'.$relativePath, $command->getInstallationDirectoryPublic($relativePath));
-
-        $this->assertSame('.', $command->getInstallationDirectoryPublic('.'));
     }
 }

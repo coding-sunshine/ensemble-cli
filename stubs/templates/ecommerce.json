@@ -1,0 +1,107 @@
+{
+    "version": 1,
+    "app": {
+        "name": "store",
+        "stack": "livewire",
+        "ui": "mary"
+    },
+    "models": {
+        "Product": {
+            "fields": {
+                "name": "string:200",
+                "slug": "string:200 unique",
+                "description": "longText",
+                "price": "decimal:10,2",
+                "compare_at_price": "decimal:10,2 nullable",
+                "sku": "string:50 unique nullable",
+                "stock_quantity": "integer default:0",
+                "is_active": "boolean default:true",
+                "featured_image": "string:500 nullable"
+            },
+            "relationships": {
+                "category": "belongsTo:Category",
+                "orderItems": "hasMany:OrderItem",
+                "reviews": "hasMany:Review"
+            }
+        },
+        "Category": {
+            "fields": {
+                "name": "string:100",
+                "slug": "string:100 unique",
+                "description": "text nullable",
+                "parent_id": "id:category nullable"
+            },
+            "relationships": {
+                "products": "hasMany:Product",
+                "parent": "belongsTo:Category",
+                "children": "hasMany:Category"
+            }
+        },
+        "Order": {
+            "fields": {
+                "user_id": "id:user nullable",
+                "order_number": "string:32 unique",
+                "status": "enum:pending,processing,shipped,delivered,cancelled default:pending",
+                "subtotal": "decimal:10,2",
+                "tax": "decimal:10,2 default:0",
+                "total": "decimal:10,2",
+                "shipping_address": "json",
+                "billing_address": "json",
+                "notes": "text nullable"
+            },
+            "relationships": {
+                "user": "belongsTo:User",
+                "items": "hasMany:OrderItem"
+            }
+        },
+        "OrderItem": {
+            "fields": {
+                "order_id": "id:order",
+                "product_id": "id:product",
+                "quantity": "integer",
+                "unit_price": "decimal:10,2",
+                "total": "decimal:10,2"
+            },
+            "relationships": {
+                "order": "belongsTo:Order",
+                "product": "belongsTo:Product"
+            }
+        },
+        "Review": {
+            "fields": {
+                "product_id": "id:product",
+                "user_id": "id:user",
+                "rating": "integer",
+                "title": "string:200 nullable",
+                "body": "text nullable",
+                "is_approved": "boolean default:false"
+            },
+            "relationships": {
+                "product": "belongsTo:Product",
+                "user": "belongsTo:User"
+            }
+        }
+    },
+    "controllers": {
+        "Product": { "resource": "web" },
+        "Category": { "resource": "web" },
+        "Order": { "resource": "web" },
+        "Review": { "resource": "web" }
+    },
+    "pages": {
+        "shop.index": { "layout": "default" },
+        "shop.product": { "layout": "default" },
+        "cart.index": { "layout": "default" },
+        "checkout.index": { "layout": "default" },
+        "orders.index": { "layout": "sidebar" },
+        "orders.show": { "layout": "sidebar" },
+        "admin.products.index": { "layout": "sidebar" },
+        "admin.orders.index": { "layout": "sidebar" }
+    },
+    "recipes": [
+        { "name": "saas-billing", "package": "laravel/cashier" },
+        { "name": "media-uploads", "package": "spatie/laravel-medialibrary" },
+        { "name": "search", "package": "laravel/scout" },
+        { "name": "notifications", "package": null }
+    ]
+}

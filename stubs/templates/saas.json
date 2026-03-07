@@ -1,0 +1,61 @@
+{
+    "version": 1,
+    "app": {
+        "name": "saas-app",
+        "stack": "livewire",
+        "ui": "mary"
+    },
+    "models": {
+        "Team": {
+            "fields": {
+                "name": "string:200",
+                "slug": "string:200 unique",
+                "owner_id": "id:user"
+            },
+            "relationships": {
+                "owner": "belongsTo:User",
+                "members": "belongsToMany:User",
+                "subscription": "hasOne:Subscription"
+            }
+        },
+        "Subscription": {
+            "fields": {
+                "team_id": "id:team",
+                "plan": "enum:free,starter,pro,enterprise default:free",
+                "status": "enum:active,cancelled,past_due default:active",
+                "trial_ends_at": "timestamp nullable",
+                "ends_at": "timestamp nullable"
+            },
+            "relationships": {
+                "team": "belongsTo:Team"
+            }
+        },
+        "Invitation": {
+            "fields": {
+                "team_id": "id:team",
+                "email": "string:200",
+                "role": "enum:admin,member default:member",
+                "token": "string:64 unique",
+                "accepted_at": "timestamp nullable"
+            },
+            "relationships": {
+                "team": "belongsTo:Team"
+            }
+        }
+    },
+    "controllers": {
+        "Team": { "resource": "web" },
+        "Subscription": { "resource": "web" },
+        "Invitation": { "resource": "web" }
+    },
+    "pages": {
+        "dashboard": { "layout": "sidebar" },
+        "teams.settings": { "layout": "sidebar" },
+        "teams.members": { "layout": "sidebar" },
+        "billing.index": { "layout": "sidebar" }
+    },
+    "recipes": [
+        { "name": "roles-permissions", "package": "spatie/laravel-permission" },
+        { "name": "saas-billing", "package": "laravel/cashier" }
+    ]
+}

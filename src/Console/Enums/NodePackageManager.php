@@ -1,6 +1,6 @@
 <?php
 
-namespace Laravel\Installer\Console\Enums;
+namespace CodingSunshine\Ensemble\Console\Enums;
 
 enum NodePackageManager: string
 {
