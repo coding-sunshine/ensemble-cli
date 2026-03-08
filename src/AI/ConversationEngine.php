@@ -3,6 +3,7 @@
 namespace CodingSunshine\Ensemble\AI;
 
 use CodingSunshine\Ensemble\AI\Providers\ProviderContract;
+use CodingSunshine\Ensemble\Recipes\KnownRecipes;
 use RuntimeException;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -24,17 +25,6 @@ enum SchemaAction: string
 
 class ConversationEngine
 {
-    protected const FEATURE_RECIPE_MAP = [
-        'roles' => ['name' => 'roles-permissions', 'package' => 'spatie/laravel-permission'],
-        'billing' => ['name' => 'saas-billing', 'package' => 'laravel/cashier'],
-        'media' => ['name' => 'media-uploads', 'package' => 'spatie/laravel-medialibrary'],
-        'search' => ['name' => 'search', 'package' => 'laravel/scout'],
-        'activity' => ['name' => 'activity-log', 'package' => 'spatie/laravel-activitylog'],
-        'admin' => ['name' => 'admin-panel', 'package' => 'filament/filament'],
-        'tenancy' => ['name' => 'multi-tenancy', 'package' => 'stancl/tenancy'],
-        'api' => ['name' => 'api-auth', 'package' => 'laravel/sanctum'],
-        'notifications' => ['name' => 'notifications', 'package' => null],
-    ];
 
     public const SCHEMA_VERSION = 1;
 
@@ -169,14 +159,15 @@ class ConversationEngine
     protected function buildRecipes(array $features): array
     {
         $recipes = [];
+        $map = KnownRecipes::toFeatureRecipeMap();
 
         foreach ($features as $feature) {
             if ($feature === 'auth') {
                 continue;
             }
 
-            if (isset(self::FEATURE_RECIPE_MAP[$feature])) {
-                $recipes[] = self::FEATURE_RECIPE_MAP[$feature];
+            if (isset($map[$feature])) {
+                $recipes[] = $map[$feature];
             }
         }
 
