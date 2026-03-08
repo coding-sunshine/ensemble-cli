@@ -21,6 +21,7 @@ $commands = [
     new CodingSunshine\Ensemble\Console\ExportCommand,
     new CodingSunshine\Ensemble\Console\ConfigCommand,
     new CodingSunshine\Ensemble\Console\DoctorCommand,
+    new CodingSunshine\Ensemble\Console\AiCommand,
 ];
 
 foreach ($commands as $command) {
