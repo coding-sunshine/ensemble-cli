@@ -90,6 +90,67 @@ class OpenAIProvider implements ProviderContract
         }
     }
 
+    public function completeStructured(string $system, string $user, array $jsonSchema): array
+    {
+        $schemaName = $jsonSchema['name'] ?? 'structured_output';
+
+        // Build schema object without our custom keys
+        $schema = $jsonSchema;
+        unset($schema['name'], $schema['description']);
+
+        try {
+            $response = $this->client->post('v1/chat/completions', [
+                'headers' => [
+                    'Authorization' => "Bearer {$this->apiKey}",
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'model' => $this->model,
+                    'max_tokens' => 4096,
+                    'messages' => [
+                        ['role' => 'system', 'content' => $system],
+                        ['role' => 'user', 'content' => $user],
+                    ],
+                    'response_format' => [
+                        'type' => 'json_schema',
+                        'json_schema' => [
+                            'name' => $schemaName,
+                            'schema' => $schema,
+                            'strict' => false,
+                        ],
+                    ],
+                ],
+            ]);
+
+            $body = json_decode($response->getBody()->getContents(), true);
+            $content = $body['choices'][0]['message']['content'] ?? '{}';
+
+            return json_decode($content, true) ?? [];
+        } catch (ClientException $exception) {
+            $status = $exception->getResponse()->getStatusCode();
+
+            if ($status === 401) {
+                throw new RuntimeException(
+                    'Invalid OpenAI API key. Check your key or set OPENAI_API_KEY / ENSEMBLE_API_KEY in your environment.'
+                );
+            }
+
+            if ($status === 429) {
+                throw new RuntimeException(
+                    'OpenAI rate limit exceeded. Please wait a moment and try again.'
+                );
+            }
+
+            throw new RuntimeException(
+                "OpenAI API error ({$status}): ".$exception->getResponse()->getBody()->getContents()
+            );
+        } catch (ConnectException $exception) {
+            throw new RuntimeException(
+                'Could not connect to OpenAI API. Check your internet connection.'
+            );
+        }
+    }
+
     public function estimateTokens(string $system, string $user): int
     {
         return (int) ceil((strlen($system) + strlen($user)) / 4);

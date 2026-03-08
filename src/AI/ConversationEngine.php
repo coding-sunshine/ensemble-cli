@@ -3,6 +3,7 @@
 namespace CodingSunshine\Ensemble\AI;
 
 use CodingSunshine\Ensemble\AI\Providers\ProviderContract;
+use CodingSunshine\Ensemble\AI\SchemaJsonSchema;
 use CodingSunshine\Ensemble\Recipes\KnownRecipes;
 use RuntimeException;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -226,6 +227,7 @@ class ConversationEngine
     protected function generateSchema(string $userPrompt): array
     {
         $systemPrompt = $this->buildSystemPrompt();
+        $jsonSchema = SchemaJsonSchema::definition();
 
         $this->verbose('System prompt length: '.strlen($systemPrompt).' chars');
         $this->debug("--- SYSTEM PROMPT ---\n{$systemPrompt}\n--- END SYSTEM PROMPT ---");
@@ -237,30 +239,22 @@ class ConversationEngine
             $this->verbose("Estimated input tokens: ~{$tokenEstimate}");
         }
 
-        $rawResponse = $this->provider->complete($systemPrompt, $userPrompt);
+        $schema = $this->provider->completeStructured($systemPrompt, $userPrompt, $jsonSchema);
 
-        $this->verbose('Response length: '.strlen($rawResponse).' chars');
-        $this->debug("--- RAW RESPONSE ---\n{$rawResponse}\n--- END RAW RESPONSE ---");
+        $this->verbose('Schema keys: '.implode(', ', array_keys($schema)));
 
-        $json = $this->extractJson($rawResponse);
-        $schema = json_decode($json, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            $this->verbose('Invalid JSON from AI: '.json_last_error_msg().'. Retrying...');
-            warning('AI returned invalid JSON, retrying...');
-            $rawResponse = $this->provider->complete(
+        if (empty($schema)) {
+            $this->verbose('Empty schema from AI. Retrying with error hint...');
+            warning('AI returned empty or invalid schema, retrying...');
+            $schema = $this->provider->completeStructured(
                 $systemPrompt,
-                $userPrompt."\n\nIMPORTANT: Your previous response was not valid JSON. Return ONLY a valid JSON object, no markdown fences or explanation.",
+                $userPrompt."\n\nIMPORTANT: Your previous response returned an empty or invalid schema. Return a complete, valid JSON schema with at least the 'app' and 'models' sections.",
+                $jsonSchema,
             );
 
-            $this->debug("--- RETRY RESPONSE ---\n{$rawResponse}\n--- END RETRY RESPONSE ---");
-
-            $json = $this->extractJson($rawResponse);
-            $schema = json_decode($json, true);
-
-            if (json_last_error() !== JSON_ERROR_NONE) {
+            if (empty($schema)) {
                 throw new RuntimeException(
-                    'AI failed to generate valid JSON after 2 attempts. Raw response: '.substr($rawResponse, 0, 500)
+                    'AI failed to generate a valid schema after 2 attempts.'
                 );
             }
         }

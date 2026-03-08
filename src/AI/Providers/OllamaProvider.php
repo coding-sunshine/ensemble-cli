@@ -63,6 +63,14 @@ class OllamaProvider implements ProviderContract
         }
     }
 
+    public function completeStructured(string $system, string $user, array $jsonSchema): array
+    {
+        $rawResponse = $this->complete($system, $user);
+        $json = $this->extractJson($rawResponse);
+
+        return json_decode($json, true) ?? [];
+    }
+
     public function estimateTokens(string $system, string $user): int
     {
         return 0;
@@ -71,5 +79,16 @@ class OllamaProvider implements ProviderContract
     public function name(): string
     {
         return 'Ollama';
+    }
+
+    protected function extractJson(string $response): string
+    {
+        $response = trim($response);
+
+        if (preg_match('/```(?:json)?\s*\n?(.*?)\n?```/s', $response, $matches)) {
+            return trim($matches[1]);
+        }
+
+        return $response;
     }
 }

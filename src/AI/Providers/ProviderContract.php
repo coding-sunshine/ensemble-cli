@@ -10,6 +10,16 @@ interface ProviderContract
     public function complete(string $system, string $user): string;
 
     /**
+     * Send a structured completion request and return a decoded array.
+     * Providers that support native JSON/tool-use modes should use them;
+     * others may fall back to complete() + extractJson() + json_decode().
+     *
+     * @param  array<string, mixed>  $jsonSchema
+     * @return array<string, mixed>
+     */
+    public function completeStructured(string $system, string $user, array $jsonSchema): array;
+
+    /**
      * Perform a lightweight connectivity check. Throws RuntimeException on failure.
      */
     public function ping(): void;

@@ -92,6 +92,14 @@ class OpenRouterProvider implements ProviderContract
         }
     }
 
+    public function completeStructured(string $system, string $user, array $jsonSchema): array
+    {
+        $rawResponse = $this->complete($system, $user);
+        $json = $this->extractJson($rawResponse);
+
+        return json_decode($json, true) ?? [];
+    }
+
     public function estimateTokens(string $system, string $user): int
     {
         return (int) ceil((strlen($system) + strlen($user)) / 4);
@@ -100,5 +108,16 @@ class OpenRouterProvider implements ProviderContract
     public function name(): string
     {
         return 'OpenRouter';
+    }
+
+    protected function extractJson(string $response): string
+    {
+        $response = trim($response);
+
+        if (preg_match('/```(?:json)?\s*\n?(.*?)\n?```/s', $response, $matches)) {
+            return trim($matches[1]);
+        }
+
+        return $response;
     }
 }
