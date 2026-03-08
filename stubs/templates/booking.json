@@ -1,0 +1,113 @@
+{
+    "version": 1,
+    "app": {
+        "name": "booking",
+        "stack": "livewire",
+        "ui": "mary"
+    },
+    "models": {
+        "Service": {
+            "fields": {
+                "name": "string:200",
+                "slug": "string:200 unique",
+                "description": "text nullable",
+                "duration_minutes": "integer",
+                "price": "decimal:10,2",
+                "max_capacity": "integer default:1",
+                "is_active": "boolean default:true",
+                "provider_id": "id:provider"
+            },
+            "relationships": {
+                "provider": "belongsTo:Provider",
+                "appointments": "hasMany:Appointment",
+                "availabilities": "hasMany:Availability"
+            }
+        },
+        "Provider": {
+            "fields": {
+                "name": "string:200",
+                "bio": "text nullable",
+                "avatar": "string:500 nullable",
+                "timezone": "string:100 default:UTC",
+                "is_active": "boolean default:true",
+                "user_id": "id:user"
+            },
+            "relationships": {
+                "user": "belongsTo:User",
+                "services": "hasMany:Service",
+                "appointments": "hasMany:Appointment",
+                "availabilities": "hasMany:Availability"
+            }
+        },
+        "Availability": {
+            "fields": {
+                "provider_id": "id:provider",
+                "day_of_week": "tinyInteger",
+                "start_time": "time",
+                "end_time": "time",
+                "is_active": "boolean default:true"
+            },
+            "relationships": {
+                "provider": "belongsTo:Provider"
+            }
+        },
+        "Appointment": {
+            "fields": {
+                "service_id": "id:service",
+                "provider_id": "id:provider",
+                "customer_id": "id:user",
+                "starts_at": "datetime",
+                "ends_at": "datetime",
+                "status": "enum:pending,confirmed,cancelled,completed,no_show default:pending",
+                "notes": "text nullable",
+                "total_price": "decimal:10,2",
+                "cancelled_at": "timestamp nullable",
+                "cancellation_reason": "text nullable"
+            },
+            "relationships": {
+                "service": "belongsTo:Service",
+                "provider": "belongsTo:Provider",
+                "customer": "belongsTo:User",
+                "payment": "hasOne:Payment"
+            }
+        },
+        "Payment": {
+            "fields": {
+                "appointment_id": "id:appointment",
+                "provider": "string:100",
+                "transaction_id": "string:200 nullable",
+                "amount": "decimal:10,2",
+                "status": "enum:pending,completed,failed,refunded default:pending",
+                "paid_at": "timestamp nullable"
+            },
+            "relationships": {
+                "appointment": "belongsTo:Appointment"
+            }
+        },
+        "Review": {
+            "fields": {
+                "appointment_id": "id:appointment",
+                "customer_id": "id:user",
+                "provider_id": "id:provider",
+                "rating": "tinyInteger",
+                "comment": "text nullable"
+            },
+            "relationships": {
+                "appointment": "belongsTo:Appointment",
+                "customer": "belongsTo:User",
+                "provider": "belongsTo:Provider"
+            }
+        }
+    },
+    "controllers": {
+        "Appointment": {
+            "resource": "web"
+        },
+        "Service": {
+            "resource": "web"
+        },
+        "Provider": {
+            "resource": "web"
+        }
+    }
+}

@@ -1,0 +1,154 @@
+{
+    "version": 1,
+    "app": {
+        "name": "lms",
+        "stack": "livewire",
+        "ui": "mary"
+    },
+    "models": {
+        "Course": {
+            "fields": {
+                "title": "string:300",
+                "slug": "string:300 unique",
+                "description": "longText nullable",
+                "thumbnail": "string:500 nullable",
+                "price": "decimal:10,2 default:0",
+                "is_free": "boolean default:false",
+                "status": "enum:draft,published,archived default:draft",
+                "level": "enum:beginner,intermediate,advanced default:beginner",
+                "instructor_id": "id:user",
+                "category_id": "id:category nullable",
+                "published_at": "timestamp nullable"
+            },
+            "relationships": {
+                "instructor": "belongsTo:User",
+                "category": "belongsTo:Category",
+                "sections": "hasMany:Section",
+                "enrollments": "hasMany:Enrollment",
+                "reviews": "hasMany:Review"
+            }
+        },
+        "Section": {
+            "fields": {
+                "course_id": "id:course",
+                "title": "string:300",
+                "sort_order": "integer default:0"
+            },
+            "relationships": {
+                "course": "belongsTo:Course",
+                "lessons": "hasMany:Lesson"
+            }
+        },
+        "Lesson": {
+            "fields": {
+                "section_id": "id:section",
+                "title": "string:300",
+                "content": "longText nullable",
+                "video_url": "string:500 nullable",
+                "duration_seconds": "unsignedInteger nullable",
+                "sort_order": "integer default:0",
+                "is_preview": "boolean default:false",
+                "type": "enum:video,text,quiz default:video"
+            },
+            "relationships": {
+                "section": "belongsTo:Section",
+                "progresses": "hasMany:LessonProgress",
+                "quiz": "hasOne:Quiz"
+            }
+        },
+        "Quiz": {
+            "fields": {
+                "lesson_id": "id:lesson",
+                "title": "string:300",
+                "passing_score": "tinyInteger default:70"
+            },
+            "relationships": {
+                "lesson": "belongsTo:Lesson",
+                "questions": "hasMany:QuizQuestion"
+            }
+        },
+        "QuizQuestion": {
+            "fields": {
+                "quiz_id": "id:quiz",
+                "body": "text",
+                "type": "enum:single,multiple default:single",
+                "sort_order": "integer default:0"
+            },
+            "relationships": {
+                "quiz": "belongsTo:Quiz",
+                "options": "hasMany:QuizOption"
+            }
+        },
+        "QuizOption": {
+            "fields": {
+                "question_id": "id:quizQuestion",
+                "body": "text",
+                "is_correct": "boolean default:false"
+            },
+            "relationships": {
+                "question": "belongsTo:QuizQuestion"
+            }
+        },
+        "Enrollment": {
+            "fields": {
+                "user_id": "id:user",
+                "course_id": "id:course",
+                "enrolled_at": "timestamp",
+                "completed_at": "timestamp nullable",
+                "progress_percent": "tinyInteger default:0",
+                "expires_at": "timestamp nullable"
+            },
+            "relationships": {
+                "user": "belongsTo:User",
+                "course": "belongsTo:Course"
+            }
+        },
+        "LessonProgress": {
+            "fields": {
+                "user_id": "id:user",
+                "lesson_id": "id:lesson",
+                "is_completed": "boolean default:false",
+                "completed_at": "timestamp nullable"
+            },
+            "relationships": {
+                "user": "belongsTo:User",
+                "lesson": "belongsTo:Lesson"
+            }
+        },
+        "Category": {
+            "fields": {
+                "name": "string:100",
+                "slug": "string:100 unique",
+                "parent_id": "id:category nullable"
+            },
+            "relationships": {
+                "parent": "belongsTo:Category",
+                "children": "hasMany:Category",
+                "courses": "hasMany:Course"
+            }
+        },
+        "Review": {
+            "fields": {
+                "user_id": "id:user",
+                "course_id": "id:course",
+                "rating": "tinyInteger",
+                "comment": "text nullable"
+            },
+            "relationships": {
+                "user": "belongsTo:User",
+                "course": "belongsTo:Course"
+            }
+        }
+    },
+    "controllers": {
+        "Course": {
+            "resource": "web"
+        },
+        "Lesson": {
+            "resource": "web"
+        },
+        "Enrollment": {
+            "resource": "web"
+        }
+    }
+}

@@ -24,6 +24,7 @@ $commands = [
     new CodingSunshine\Ensemble\Console\AiCommand,
     new CodingSunshine\Ensemble\Console\UpdateCommand,
     new CodingSunshine\Ensemble\Console\RecipeCommand,
+    new CodingSunshine\Ensemble\Console\TemplateCommand,
 ];
 
 foreach ($commands as $command) {

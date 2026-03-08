@@ -1,0 +1,135 @@
+{
+    "version": 1,
+    "app": {
+        "name": "social",
+        "stack": "livewire",
+        "ui": "mary"
+    },
+    "models": {
+        "Profile": {
+            "fields": {
+                "user_id": "id:user",
+                "display_name": "string:200 nullable",
+                "bio": "text nullable",
+                "avatar": "string:500 nullable",
+                "cover_image": "string:500 nullable",
+                "website": "string:500 nullable",
+                "location": "string:200 nullable",
+                "is_private": "boolean default:false",
+                "followers_count": "unsignedInteger default:0",
+                "following_count": "unsignedInteger default:0",
+                "posts_count": "unsignedInteger default:0"
+            },
+            "relationships": {
+                "user": "belongsTo:User",
+                "posts": "hasMany:Post",
+                "followers": "belongsToMany:User",
+                "following": "belongsToMany:User"
+            }
+        },
+        "Post": {
+            "fields": {
+                "user_id": "id:user",
+                "body": "longText nullable",
+                "type": "enum:text,image,video,link default:text",
+                "media_url": "string:500 nullable",
+                "link_url": "string:500 nullable",
+                "link_title": "string:300 nullable",
+                "likes_count": "unsignedInteger default:0",
+                "comments_count": "unsignedInteger default:0",
+                "shares_count": "unsignedInteger default:0",
+                "is_published": "boolean default:true",
+                "published_at": "timestamp nullable"
+            },
+            "relationships": {
+                "user": "belongsTo:User",
+                "comments": "hasMany:Comment",
+                "likes": "hasMany:Like",
+                "tags": "belongsToMany:Hashtag"
+            }
+        },
+        "Comment": {
+            "fields": {
+                "post_id": "id:post",
+                "user_id": "id:user",
+                "parent_id": "id:comment nullable",
+                "body": "text",
+                "likes_count": "unsignedInteger default:0"
+            },
+            "relationships": {
+                "post": "belongsTo:Post",
+                "user": "belongsTo:User",
+                "parent": "belongsTo:Comment",
+                "replies": "hasMany:Comment",
+                "likes": "hasMany:Like"
+            }
+        },
+        "Like": {
+            "fields": {
+                "user_id": "id:user",
+                "likeable_id": "unsignedBigInteger",
+                "likeable_type": "string:200"
+            },
+            "relationships": {
+                "user": "belongsTo:User"
+            }
+        },
+        "Follow": {
+            "fields": {
+                "follower_id": "id:user",
+                "following_id": "id:user",
+                "is_accepted": "boolean default:true"
+            },
+            "relationships": {
+                "follower": "belongsTo:User",
+                "following": "belongsTo:User"
+            }
+        },
+        "Hashtag": {
+            "fields": {
+                "name": "string:100 unique",
+                "posts_count": "unsignedInteger default:0"
+            },
+            "relationships": {
+                "posts": "belongsToMany:Post"
+            }
+        },
+        "Message": {
+            "fields": {
+                "sender_id": "id:user",
+                "receiver_id": "id:user",
+                "body": "text",
+                "is_read": "boolean default:false",
+                "read_at": "timestamp nullable"
+            },
+            "relationships": {
+                "sender": "belongsTo:User",
+                "receiver": "belongsTo:User"
+            }
+        },
+        "Notification": {
+            "fields": {
+                "user_id": "id:user",
+                "actor_id": "id:user nullable",
+                "type": "string:100",
+                "subject_id": "unsignedBigInteger nullable",
+                "subject_type": "string:200 nullable",
+                "data": "json nullable",
+                "is_read": "boolean default:false",
+                "read_at": "timestamp nullable"
+            },
+            "relationships": {
+                "user": "belongsTo:User",
+                "actor": "belongsTo:User"
+            }
+        }
+    },
+    "controllers": {
+        "Post": {
+            "resource": "web"
+        },
+        "Profile": {
+            "resource": "web"
+        }
+    }
+}

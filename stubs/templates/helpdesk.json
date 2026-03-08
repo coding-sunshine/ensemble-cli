@@ -1,0 +1,107 @@
+{
+    "version": 1,
+    "app": {
+        "name": "helpdesk",
+        "stack": "livewire",
+        "ui": "mary"
+    },
+    "models": {
+        "Ticket": {
+            "fields": {
+                "subject": "string:300",
+                "body": "longText",
+                "status": "enum:open,pending,resolved,closed default:open",
+                "priority": "enum:low,medium,high,urgent default:medium",
+                "requester_id": "id:user",
+                "assignee_id": "id:user nullable",
+                "category_id": "id:category nullable",
+                "resolved_at": "timestamp nullable",
+                "closed_at": "timestamp nullable",
+                "due_at": "timestamp nullable"
+            },
+            "relationships": {
+                "requester": "belongsTo:User",
+                "assignee": "belongsTo:User",
+                "category": "belongsTo:Category",
+                "replies": "hasMany:TicketReply",
+                "attachments": "hasMany:Attachment",
+                "tags": "belongsToMany:Tag"
+            }
+        },
+        "TicketReply": {
+            "fields": {
+                "ticket_id": "id:ticket",
+                "author_id": "id:user",
+                "body": "longText",
+                "is_internal": "boolean default:false"
+            },
+            "relationships": {
+                "ticket": "belongsTo:Ticket",
+                "author": "belongsTo:User",
+                "attachments": "hasMany:Attachment"
+            }
+        },
+        "Category": {
+            "fields": {
+                "name": "string:100",
+                "description": "text nullable",
+                "parent_id": "id:category nullable"
+            },
+            "relationships": {
+                "parent": "belongsTo:Category",
+                "children": "hasMany:Category",
+                "tickets": "hasMany:Ticket"
+            }
+        },
+        "Tag": {
+            "fields": {
+                "name": "string:100",
+                "color": "string:7 default:#6b7280"
+            },
+            "relationships": {
+                "tickets": "belongsToMany:Ticket"
+            }
+        },
+        "Attachment": {
+            "fields": {
+                "path": "string:500",
+                "filename": "string:300",
+                "mime_type": "string:100",
+                "size": "unsignedBigInteger"
+            }
+        },
+        "Article": {
+            "fields": {
+                "title": "string:300",
+                "slug": "string:300 unique",
+                "body": "longText",
+                "status": "enum:draft,published,archived default:draft",
+                "author_id": "id:user",
+                "category_id": "id:category nullable",
+                "published_at": "timestamp nullable",
+                "views_count": "unsignedInteger default:0"
+            },
+            "relationships": {
+                "author": "belongsTo:User",
+                "category": "belongsTo:Category"
+            }
+        },
+        "Team": {
+            "fields": {
+                "name": "string:200",
+                "description": "text nullable"
+            },
+            "relationships": {
+                "members": "belongsToMany:User"
+            }
+        }
+    },
+    "controllers": {
+        "Ticket": {
+            "resource": "web"
+        },
+        "Article": {
+            "resource": "web"
+        }
+    }
+}

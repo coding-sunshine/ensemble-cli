@@ -1,0 +1,143 @@
+{
+    "version": 1,
+    "app": {
+        "name": "inventory",
+        "stack": "livewire",
+        "ui": "mary"
+    },
+    "models": {
+        "Warehouse": {
+            "fields": {
+                "name": "string:200",
+                "code": "string:50 unique",
+                "address": "text nullable",
+                "is_active": "boolean default:true"
+            },
+            "relationships": {
+                "locations": "hasMany:Location",
+                "stockMovements": "hasMany:StockMovement"
+            }
+        },
+        "Location": {
+            "fields": {
+                "warehouse_id": "id:warehouse",
+                "code": "string:100",
+                "description": "string:200 nullable",
+                "is_active": "boolean default:true"
+            },
+            "relationships": {
+                "warehouse": "belongsTo:Warehouse",
+                "stockItems": "hasMany:StockItem"
+            }
+        },
+        "Product": {
+            "fields": {
+                "name": "string:200",
+                "sku": "string:100 unique",
+                "barcode": "string:100 unique nullable",
+                "description": "text nullable",
+                "unit": "string:50 default:pcs",
+                "cost_price": "decimal:10,2 default:0",
+                "sell_price": "decimal:10,2 default:0",
+                "reorder_level": "integer default:0",
+                "category_id": "id:category nullable",
+                "is_active": "boolean default:true"
+            },
+            "relationships": {
+                "category": "belongsTo:Category",
+                "stockItems": "hasMany:StockItem",
+                "stockMovements": "hasMany:StockMovement"
+            }
+        },
+        "Category": {
+            "fields": {
+                "name": "string:100",
+                "parent_id": "id:category nullable"
+            },
+            "relationships": {
+                "parent": "belongsTo:Category",
+                "children": "hasMany:Category",
+                "products": "hasMany:Product"
+            }
+        },
+        "StockItem": {
+            "fields": {
+                "product_id": "id:product",
+                "location_id": "id:location",
+                "quantity": "decimal:10,3 default:0",
+                "reserved_quantity": "decimal:10,3 default:0"
+            },
+            "relationships": {
+                "product": "belongsTo:Product",
+                "location": "belongsTo:Location"
+            }
+        },
+        "StockMovement": {
+            "fields": {
+                "product_id": "id:product",
+                "warehouse_id": "id:warehouse",
+                "type": "enum:in,out,transfer,adjustment",
+                "quantity": "decimal:10,3",
+                "reference": "string:200 nullable",
+                "notes": "text nullable",
+                "user_id": "id:user"
+            },
+            "relationships": {
+                "product": "belongsTo:Product",
+                "warehouse": "belongsTo:Warehouse",
+                "user": "belongsTo:User"
+            }
+        },
+        "Supplier": {
+            "fields": {
+                "name": "string:200",
+                "code": "string:50 unique nullable",
+                "email": "string:200 nullable",
+                "phone": "string:50 nullable",
+                "address": "text nullable",
+                "is_active": "boolean default:true"
+            },
+            "relationships": {
+                "purchaseOrders": "hasMany:PurchaseOrder"
+            }
+        },
+        "PurchaseOrder": {
+            "fields": {
+                "supplier_id": "id:supplier",
+                "status": "enum:draft,ordered,partial,received,cancelled default:draft",
+                "expected_at": "date nullable",
+                "received_at": "date nullable",
+                "notes": "text nullable",
+                "total": "decimal:10,2 default:0"
+            },
+            "relationships": {
+                "supplier": "belongsTo:Supplier",
+                "items": "hasMany:PurchaseOrderItem"
+            }
+        },
+        "PurchaseOrderItem": {
+            "fields": {
+                "purchase_order_id": "id:purchaseOrder",
+                "product_id": "id:product",
+                "quantity_ordered": "decimal:10,3",
+                "quantity_received": "decimal:10,3 default:0",
+                "unit_cost": "decimal:10,2"
+            },
+            "relationships": {
+                "purchaseOrder": "belongsTo:PurchaseOrder",
+                "product": "belongsTo:Product"
+            }
+        }
+    },
+    "controllers": {
+        "Product": {
+            "resource": "web"
+        },
+        "StockMovement": {
+            "resource": "web"
+        },
+        "PurchaseOrder": {
+            "resource": "web"
+        }
+    }
+}

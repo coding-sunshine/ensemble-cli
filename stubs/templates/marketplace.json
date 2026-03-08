@@ -1,0 +1,151 @@
+{
+    "version": 1,
+    "app": {
+        "name": "marketplace",
+        "stack": "livewire",
+        "ui": "mary"
+    },
+    "models": {
+        "Vendor": {
+            "fields": {
+                "name": "string:200",
+                "slug": "string:200 unique",
+                "description": "text nullable",
+                "logo": "string:500 nullable",
+                "website": "string:500 nullable",
+                "is_active": "boolean default:true",
+                "user_id": "id:user"
+            },
+            "relationships": {
+                "user": "belongsTo:User",
+                "products": "hasMany:Product",
+                "orders": "hasMany:Order"
+            }
+        },
+        "Product": {
+            "fields": {
+                "name": "string:200",
+                "slug": "string:200 unique",
+                "description": "longText",
+                "price": "decimal:10,2",
+                "compare_at_price": "decimal:10,2 nullable",
+                "sku": "string:50 nullable",
+                "stock_quantity": "integer default:0",
+                "is_active": "boolean default:true",
+                "featured_image": "string:500 nullable",
+                "vendor_id": "id:vendor"
+            },
+            "relationships": {
+                "vendor": "belongsTo:Vendor",
+                "category": "belongsTo:Category",
+                "images": "hasMany:ProductImage",
+                "reviews": "hasMany:Review",
+                "orderItems": "hasMany:OrderItem",
+                "tags": "belongsToMany:Tag"
+            }
+        },
+        "Category": {
+            "fields": {
+                "name": "string:100",
+                "slug": "string:100 unique",
+                "description": "text nullable",
+                "parent_id": "id:category nullable"
+            },
+            "relationships": {
+                "parent": "belongsTo:Category",
+                "children": "hasMany:Category",
+                "products": "hasMany:Product"
+            }
+        },
+        "ProductImage": {
+            "fields": {
+                "product_id": "id:product",
+                "url": "string:500",
+                "alt": "string:200 nullable",
+                "sort_order": "integer default:0"
+            },
+            "relationships": {
+                "product": "belongsTo:Product"
+            }
+        },
+        "Tag": {
+            "fields": {
+                "name": "string:100",
+                "slug": "string:100 unique"
+            },
+            "relationships": {
+                "products": "belongsToMany:Product"
+            }
+        },
+        "Order": {
+            "fields": {
+                "user_id": "id:user",
+                "status": "enum:pending,processing,shipped,delivered,cancelled,refunded default:pending",
+                "subtotal": "decimal:10,2",
+                "shipping": "decimal:10,2 default:0",
+                "tax": "decimal:10,2 default:0",
+                "total": "decimal:10,2",
+                "shipping_address": "json nullable",
+                "notes": "text nullable"
+            },
+            "relationships": {
+                "user": "belongsTo:User",
+                "items": "hasMany:OrderItem",
+                "payment": "hasOne:Payment"
+            }
+        },
+        "OrderItem": {
+            "fields": {
+                "order_id": "id:order",
+                "product_id": "id:product",
+                "vendor_id": "id:vendor",
+                "quantity": "integer",
+                "unit_price": "decimal:10,2",
+                "total": "decimal:10,2"
+            },
+            "relationships": {
+                "order": "belongsTo:Order",
+                "product": "belongsTo:Product",
+                "vendor": "belongsTo:Vendor"
+            }
+        },
+        "Payment": {
+            "fields": {
+                "order_id": "id:order",
+                "provider": "string:100",
+                "transaction_id": "string:200 nullable",
+                "amount": "decimal:10,2",
+                "status": "enum:pending,completed,failed,refunded default:pending",
+                "paid_at": "timestamp nullable"
+            },
+            "relationships": {
+                "order": "belongsTo:Order"
+            }
+        },
+        "Review": {
+            "fields": {
+                "user_id": "id:user",
+                "product_id": "id:product",
+                "rating": "tinyInteger",
+                "title": "string:200 nullable",
+                "body": "text nullable",
+                "is_verified": "boolean default:false"
+            },
+            "relationships": {
+                "user": "belongsTo:User",
+                "product": "belongsTo:Product"
+            }
+        }
+    },
+    "controllers": {
+        "Product": {
+            "resource": "web"
+        },
+        "Order": {
+            "resource": "web"
+        },
+        "Vendor": {
+            "resource": "web"
+        }
+    }
+}
