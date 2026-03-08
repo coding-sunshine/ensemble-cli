@@ -146,6 +146,95 @@ Define state machines for model lifecycle:
 - `"states"` — ordered list of valid states
 - `"transitions"` — named transitions with from/to states
 
+## Dashboards
+
+Define analytics and overview dashboards:
+```json
+"dashboards": {
+    "admin": {
+        "title": "Admin Dashboard",
+        "widgets": [
+            { "type": "stat", "label": "Total Users", "query": "User.count" },
+            { "type": "chart", "label": "Revenue", "query": "Order.sum(total).groupByMonth" },
+            { "type": "table", "label": "Recent Orders", "model": "Order", "limit": 10 }
+        ]
+    }
+}
+```
+
+## Roles
+
+Define authorization roles and permissions:
+```json
+"roles": {
+    "admin": {
+        "description": "Full system access",
+        "permissions": ["*"]
+    },
+    "editor": {
+        "description": "Can manage content",
+        "permissions": ["posts.create", "posts.edit", "posts.delete"]
+    }
+}
+```
+
+## Services
+
+Define external service integrations:
+```json
+"services": {
+    "stripe": {
+        "driver": "stripe",
+        "webhooks": ["payment.succeeded", "subscription.cancelled"]
+    },
+    "sendgrid": {
+        "driver": "sendgrid"
+    }
+}
+```
+
+## Schedules
+
+Define scheduled tasks:
+```json
+"schedules": {
+    "send-weekly-report": {
+        "command": "reports:weekly",
+        "cron": "0 9 * * 1",
+        "description": "Send weekly report every Monday at 9am"
+    },
+    "cleanup-expired": {
+        "command": "cleanup:expired",
+        "frequency": "daily"
+    }
+}
+```
+
+## Broadcasts
+
+Define real-time broadcast events:
+```json
+"broadcasts": {
+    "OrderUpdated": {
+        "model": "Order",
+        "channel": "orders.{order.id}",
+        "private": true,
+        "payload": ["status", "updated_at"]
+    }
+}
+```
+
+## UI Library Hints
+
+When the user mentions a specific UI library, generate pages and dashboards compatible with it:
+
+- **MaryUI** (`mary-ui/laravel`): Livewire-based component library. Use `"stack": "livewire"` in pages.
+- **Flux** (`livewire/flux`): Flux UI for Livewire. Use `"stack": "livewire"` in pages.
+- **shadcn/ui** (`shadcn/ui`): React/Inertia component library. Use `"stack": "react"` in pages.
+- **Filament** (`filament/filament`): Admin panel framework. When Filament is requested, use `"stack": "filament"` and generate resource definitions.
+
+If no UI library is mentioned, default to Blade/Livewire pages.
+
 ## Important Rules
 
 - Do NOT include `id`, `created_at`, or `updated_at` fields (they are automatic)

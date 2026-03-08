@@ -13,6 +13,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class RecipeCommand extends Command
 {
+    use Concerns\OutputsJson;
+
     private ?LaraPluginsClient $laraPluginsClient;
 
     public function __construct(?LaraPluginsClient $laraPluginsClient = null)

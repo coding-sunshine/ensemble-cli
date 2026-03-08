@@ -18,6 +18,7 @@ use function Laravel\Prompts\spin;
 
 class AiCommand extends Command
 {
+    use Concerns\OutputsJson;
     use Concerns\ResolvesAIProvider;
 
     protected function configure(): void

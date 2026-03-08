@@ -13,6 +13,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class TemplateCommand extends Command
 {
+    use Concerns\OutputsJson;
+
     protected function configure(): void
     {
         $this

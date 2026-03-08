@@ -19,6 +19,7 @@ use function Laravel\Prompts\textarea;
 
 class UpdateCommand extends Command
 {
+    use Concerns\OutputsJson;
     use Concerns\ResolvesAIProvider;
 
     protected function configure(): void

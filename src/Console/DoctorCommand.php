@@ -44,6 +44,9 @@ class DoctorCommand extends Command
         $this->checkNode($output);
         $this->checkAiProviders($output);
         $this->checkConfig($output);
+        $this->checkSchemaSync($output);
+        $this->checkHerdValetSail($output);
+        $this->checkNpmForStudio($output);
 
         $output->writeln('');
 
@@ -234,5 +237,74 @@ class DoctorCommand extends Command
     {
         $this->errors++;
         $output->writeln("    <fg=red>✗</> {$message}");
+    }
+
+    protected function checkSchemaSync(OutputInterface $output): void
+    {
+        $output->writeln('');
+        $output->writeln('  <options=bold>Schema Sync</>');
+
+        $schemaPath = getcwd().'/ensemble.json';
+
+        if (! file_exists($schemaPath)) {
+            $output->writeln('    <fg=gray>○</> No ensemble.json found in current directory (optional)');
+
+            return;
+        }
+
+        $contents = file_get_contents($schemaPath);
+        $decoded = json_decode($contents, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $this->fail($output, 'ensemble.json is not valid JSON: '.json_last_error_msg());
+        } else {
+            $this->pass($output, 'ensemble.json found and valid');
+        }
+    }
+
+    protected function checkHerdValetSail(OutputInterface $output): void
+    {
+        $output->writeln('');
+        $output->writeln('  <options=bold>Local Development Environment</>');
+
+        $finder = new ExecutableFinder();
+
+        $herd = $finder->find('herd');
+        $valet = $finder->find('valet');
+
+        if ($herd) {
+            $this->pass($output, 'Herd found');
+        } elseif ($valet) {
+            $this->pass($output, 'Valet found');
+        } else {
+            $output->writeln('    <fg=gray>○</> Herd/Valet not found (optional — also supports Laravel Sail)');
+        }
+
+        $sailPath = getcwd().'/vendor/bin/sail';
+
+        if (file_exists($sailPath)) {
+            $this->pass($output, 'Laravel Sail found');
+        } else {
+            $output->writeln('    <fg=gray>○</> Laravel Sail not found (optional)');
+        }
+    }
+
+    protected function checkNpmForStudio(OutputInterface $output): void
+    {
+        $output->writeln('');
+        $output->writeln('  <options=bold>Studio Requirements</>');
+
+        $finder = new ExecutableFinder();
+
+        $npm = $finder->find('npm');
+        $bun = $finder->find('bun');
+        $pnpm = $finder->find('pnpm');
+
+        if ($npm || $bun || $pnpm) {
+            $manager = $npm ? 'npm' : ($bun ? 'bun' : 'pnpm');
+            $this->pass($output, "Package manager found ({$manager}) — required for Ensemble Studio");
+        } else {
+            $this->warn($output, 'No Node.js package manager found (npm/bun/pnpm) — required to build Ensemble Studio assets');
+        }
     }
 }
