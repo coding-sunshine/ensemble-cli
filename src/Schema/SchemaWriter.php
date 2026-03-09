@@ -5,6 +5,15 @@ namespace CodingSunshine\Ensemble\Schema;
 use CodingSunshine\Ensemble\AI\ConversationEngine;
 use RuntimeException;
 
+/**
+ * Reads and writes ensemble.json with version validation and consistent key ordering.
+ *
+ * This class is duplicated in the ensemble Laravel package (CodingSunshine\Ensemble\SchemaWriter).
+ * The ensemble package version is write-only; this version also handles reading + version validation.
+ * When changing key ordering or JSON encoding flags, sync both files.
+ *
+ * @see ensemble/src/SchemaWriter.php — Laravel package counterpart
+ */
 class SchemaWriter
 {
     /**
@@ -112,6 +121,32 @@ class SchemaWriter
     }
 
     /**
+     * Read and decode a JSON schema file, validating only version compatibility.
+     * Unlike read(), structural validation is skipped so AI commands can operate
+     * on schemas that are not yet valid (e.g. to patch and fix them).
+     *
+     * @return array<string, mixed>
+     * @throws RuntimeException on invalid JSON or incompatible schema version
+     */
+    public static function readLoose(string $path): array
+    {
+        if (! file_exists($path)) {
+            throw new RuntimeException("Schema file not found: {$path}");
+        }
+
+        $contents = file_get_contents($path);
+        $schema   = json_decode($contents, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new RuntimeException("Invalid JSON in {$path}: ".json_last_error_msg());
+        }
+
+        self::validateVersion($schema, $path);
+
+        return $schema;
+    }
+
+    /**
      * Reorder schema keys so version and app come first for readability.
      *
      * @param  array<string, mixed>  $schema
@@ -119,7 +154,7 @@ class SchemaWriter
      */
     protected static function reorderKeys(array $schema): array
     {
-        $priority = ['version', 'app', 'models', 'controllers', 'pages', 'notifications', 'workflows', 'recipes'];
+        $priority = ['version', 'app', 'models', 'controllers', 'pages', 'notifications', 'workflows', 'dashboards', 'roles', 'services', 'schedules', 'broadcasts', 'recipes'];
         $ordered = [];
 
         foreach ($priority as $key) {

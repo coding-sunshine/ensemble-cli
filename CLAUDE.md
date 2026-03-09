@@ -18,49 +18,59 @@ src/
 │   ├── ShowCommand.php               ← `ensemble show` — pretty-print schema (models, notifications, workflows)
 │   ├── ValidateCommand.php           ← `ensemble validate` — standalone schema validation with errors/warnings
 │   ├── DiffCommand.php               ← `ensemble diff` — compare two schema files
-│   ├── ExportCommand.php             ← `ensemble export` — export schema as markdown documentation
+│   ├── ExportCommand.php             ← `ensemble export` — export schema as markdown/mermaid/schema-graph
 │   ├── ConfigCommand.php             ← `ensemble config` — view/set/clear saved configuration
 │   ├── DoctorCommand.php             ← `ensemble doctor` — environment health check
+│   ├── AiCommand.php                 ← `ensemble ai` — patch schema with a natural language prompt
+│   ├── UpdateCommand.php             ← `ensemble update` — AI-patch schema inside an existing project dir
+│   ├── RecipeCommand.php             ← `ensemble recipe` — list/add/remove/search package recipes in schema
+│   ├── TemplateCommand.php           ← `ensemble template` — browse/install bundled and remote templates
 │   ├── Concerns/
 │   │   ├── ConfiguresPrompts.php     ← Prompt fallbacks for non-interactive/Windows
 │   │   ├── DisplaysDryRun.php        ← --dry-run display logic shared between new and init
 │   │   ├── InteractsWithHerdOrValet.php ← Herd/Valet park detection
+│   │   ├── OutputsJson.php           ← --json structured output helper
 │   │   ├── ResolvesAIProvider.php    ← Resolves AI provider from saved config, --options, env, or prompts
 │   │   └── TracksProgress.php        ← [X/Y] step progress indicator for long operations
 │   └── Enums/
 │       └── NodePackageManager.php    ← NPM/YARN/PNPM/BUN helpers
 ├── AI/
 │   ├── ConversationEngine.php        ← Multi-step AI interview → JSON schema (extend mode, verbose logging)
+│   ├── SchemaPatcher.php             ← Delta prompt building + deep-merge patch application
+│   ├── SchemaJsonSchema.php          ← JSON Schema definitions for AI structured output
 │   └── Providers/
-│       ├── ProviderContract.php      ← Interface: complete(), ping(), estimateTokens(), name()
-│       ├── AnthropicProvider.php     ← Claude API via Guzzle (ping uses max_tokens:1)
-│       ├── OpenAIProvider.php        ← GPT API via Guzzle (ping uses GET /v1/models)
-│       ├── OpenRouterProvider.php    ← OpenRouter via Guzzle (ping uses GET /api/v1/models)
+│       ├── ProviderContract.php      ← Interface: complete(), completeStructured(), ping(), estimateTokens(), name()
+│       ├── AnthropicProvider.php     ← Claude API via Guzzle (tool-use for structured output)
+│       ├── OpenAIProvider.php        ← GPT API via Guzzle (json_schema response format)
+│       ├── OpenRouterProvider.php    ← OpenRouter via Guzzle (falls back to regex JSON extraction)
 │       └── OllamaProvider.php        ← Local LLM (configurable via OLLAMA_HOST env var)
 ├── Config/
 │   └── ConfigStore.php               ← Persistent config at ~/.ensemble/config.json (provider, API keys)
-├── Schema/
-│   ├── SchemaWriter.php              ← Read/write ensemble.json (JSON only, with version + structure validation)
-│   ├── SchemaValidator.php           ← Validates schema structure, field types, relationship syntax, etc.
-│   └── TemplateRegistry.php          ← Bundled starter templates (saas, blog, ecommerce, crm, api)
-└── Scaffold/
-    └── StarterKitResolver.php        ← Maps stack name → Laravel starter kit package
+├── Http/
+│   └── LaraPluginsClient.php         ← laraplugins.io package search API (1hr cache)
+├── Recipes/
+│   └── KnownRecipes.php              ← Catalog of known Laravel packages for recipe suggestions
+├── Scaffold/
+│   └── StarterKitResolver.php        ← Maps stack name → Laravel starter kit package
+└── Schema/
+    ├── SchemaWriter.php              ← Read/write ensemble.json (JSON only, version + structure validation)
+    ├── SchemaValidator.php           ← Validates schema structure, field types, relationship syntax, etc.
+    ├── SchemaDiagramExporter.php     ← Mermaid ER + schema-graph JSON export
+    └── TemplateRegistry.php          ← Bundled + external templates (saas, blog, ecommerce, crm, api, ...)
 stubs/
 ├── system-prompt.md                  ← Externalized AI system prompt (full schema spec with all sections)
+├── ai-patch-prompt.md                ← System prompt for delta/patch mode (AiCommand, UpdateCommand)
 └── templates/                        ← Pre-built schema files for offline/no-AI use
-    ├── saas.json
-    ├── blog.json
-    ├── ecommerce.json
-    ├── crm.json
-    └── api.json
+    ├── saas.json, blog.json, ecommerce.json, crm.json, api.json
+    ├── marketplace.json, booking.json, inventory.json
+    ├── helpdesk.json, lms.json, social.json
 tests/
-├── NewCommandTest.php
-├── InteractsWithHerdOrValetTest.php
-├── ConfigStoreTest.php
-├── TemplateRegistryTest.php
-├── SchemaWriterTest.php
-├── StarterKitResolverTest.php
-└── SchemaValidatorTest.php
+├── AiCommandTest.php, UpdateCommandTest.php, RecipeCommandTest.php, TemplateCommandTest.php
+├── NewCommandTest.php, InteractsWithHerdOrValetTest.php
+├── ConfigStoreTest.php, TemplateRegistryTest.php
+├── SchemaWriterTest.php, SchemaPatcherTest.php, SchemaValidatorTest.php
+├── StarterKitResolverTest.php, LaraPluginsClientTest.php
+└── fixtures/ (laravel10, laravel11, laravel12 composer.json fixtures)
 ```
 
 ## Namespace
@@ -75,15 +85,24 @@ tests/
 - `php bin/ensemble show [path]` — Pretty-print an ensemble.json schema
 - `php bin/ensemble validate [path]` — Validate schema structure with errors/warnings
 - `php bin/ensemble diff <old> <new>` — Compare two schema files (added/removed/changed)
-- `php bin/ensemble export [path]` — Export schema as markdown documentation
+- `php bin/ensemble export [path]` — Export schema as markdown/mermaid/schema-graph
 - `php bin/ensemble config [action] [key] [value]` — View/set/clear saved configuration
 - `php bin/ensemble doctor` — Check environment for compatibility
+- `php bin/ensemble ai "Add a Team model with members"` — Patch schema with AI (shows diff + confirmation)
+- `php bin/ensemble ai "..." --apply` — Apply patch without confirmation
+- `php bin/ensemble ai "..." --dry-run` — Show diff only, don't write
+- `php bin/ensemble update ./my-app --prompt "Add invoicing"` — AI-patch schema inside a project dir
+- `php bin/ensemble update ./my-app --build` — Patch schema and run ensemble:build
+- `php bin/ensemble recipe list` — Show built-in recipes and ones in your schema
+- `php bin/ensemble recipe add spatie/laravel-permission` — Add a recipe to schema
+- `php bin/ensemble recipe remove spatie/laravel-permission` — Remove a recipe from schema
+- `php bin/ensemble recipe search "search"` — Search laraplugins.io
+- `php bin/ensemble template list` — Browse bundled templates
+- `php bin/ensemble template install saas` — Install a bundled template as ensemble.json
 - `php bin/ensemble new <name> --from=ensemble.json` — Create project from existing schema
 - `php bin/ensemble new <name> --template=saas` — Create project from bundled template
 - `php bin/ensemble new <name> --dry-run --from=schema.json` — Preview what would happen
 - `php bin/ensemble draft --extend=ensemble.json` — AI extends an existing schema
-- `php bin/ensemble draft --template=blog` — Generate schema from bundled template
-- `php bin/ensemble init --template=crm` — Add template schema to existing project
 - `php bin/ensemble new <name> --from=schema.json -n` — Fully headless, non-interactive mode
 - `php bin/ensemble new <name> --no-ai` — Plain Laravel project (same as `laravel new`)
 
@@ -210,6 +229,50 @@ Field syntax follows Laravel Blueprint conventions. Relationship format is flat:
 - Error messages should be helpful and suggest fixes
 - Follow Taylor Otwell's style: expressive, readable code
 
+## Separation of Responsibilities
+
+This CLI owns **schema creation and project scaffolding**. It does NOT own code generation — that belongs entirely to `coding-sunshine/ensemble`.
+
+### Belongs HERE (`ensemble-cli`)
+
+| Concern | Classes / Commands |
+|---------|-------------------|
+| AI schema interview | `AI/ConversationEngine.php` |
+| AI patch (natural language → delta) | `AI/SchemaPatcher.php`, `AiCommand`, `UpdateCommand` |
+| Project creation / scaffolding | `NewCommand`, `InitCommand` |
+| Standalone schema tools (no Laravel) | `ValidateCommand`, `DiffCommand`, `ExportCommand`, `ShowCommand` |
+| Template catalog | `Schema/TemplateRegistry.php`, `TemplateCommand` |
+| Package search + recipe UI | `RecipeCommand`, `Http/LaraPluginsClient.php` |
+| Schema read/write with version validation | `Schema/SchemaWriter.php` (full: read + readLoose + write) |
+
+### Belongs in `ensemble` (not here)
+
+| Concern | Where it lives |
+|---------|---------------|
+| Code generation pipeline | `ensemble/src/Ensemble.php`, `Builder`, all Lexers + Generators |
+| Artisan schema editing commands | `AppendCommand`, `ReduceCommand`, `RelationshipCommand`, `ApplyCommand` |
+| Studio (browser IDE) | `ensemble/src/Http/`, `Studio/` |
+| Recipe install during build | `ensemble/src/RecipeInstaller.php` |
+
+### Rule: Never read or write `ensemble.json` with raw `json_encode`/`json_decode`
+
+Always use `SchemaWriter::write()` (or `SchemaWriter::readLoose()` for AI commands). This ensures:
+- Canonical key ordering (`version`, `app`, `models`, `controllers`, ...)
+- Version compatibility checks on read
+- Structural validation on `SchemaWriter::read()`
+
+### Intentional Duplication (until shared library exists)
+
+These classes exist in both packages. When editing one, sync the other:
+
+| Class | Notes |
+|-------|-------|
+| `Recipes/KnownRecipes.php` | Must stay identical. `feature_key` === `name` in both. |
+| `SchemaValidator.php` | CLI version has richer field-type validation; ensemble version adds `suggestions`. |
+| `DiagramExporter` / `SchemaDiagramExporter` | Same Mermaid logic; keep in sync. |
+
+Long-term plan: extract these into `coding-sunshine/ensemble-schema`, required by both.
+
 ## The two packages
 
 | | Package 1: `ensemble-cli` (this repo) | Package 2: `ensemble` (separate repo) |
@@ -221,9 +284,20 @@ Field syntax follows Laravel Blueprint conventions. Relationship format is flat:
 
 This CLI handles schema creation. The companion package handles code generation from that schema. The package also supports **AI-friendly iteration**: `ensemble:append`, `ensemble:reduce`, `ensemble:from-database`, `ensemble:apply`, and `ensemble:validate --json` (machine-readable errors + suggestions) so schemas can be updated incrementally or by AI without replacing the whole file.
 
-## What needs building next
+## Status
 
-1. The `coding-sunshine/ensemble` Laravel package (fork blueprint, add analyzers, generators, lexers)
-2. CI/CD pipeline for this CLI repo
-3. Publish to Packagist as `coding-sunshine/ensemble-cli`
-4. Integration tests with mocked AI providers
+The companion `coding-sunshine/ensemble` Laravel package exists and is substantially complete.
+It lives at `../ensemble/` in the monorepo. It includes:
+- Full lexer + generator pipeline (models, controllers, migrations, factories, policies, enums, workflows, pages, dashboards, etc.)
+- `ensemble:build`, `ensemble:trace`, `ensemble:analyze`, `ensemble:validate`, `ensemble:lint`, `ensemble:watch`, `ensemble:from-database`, and 15+ other artisan commands
+- Ensemble Studio: browser-based IDE at `/ensemble/studio` (React SPA + AI chat)
+- AI streaming chat service (OpenAI, Anthropic, OpenRouter, Ollama)
+- Schema history / undo-redo
+
+## What still needs doing
+
+1. CI/CD pipelines for both repos
+2. Publish to Packagist: `coding-sunshine/ensemble-cli` and `coding-sunshine/ensemble`
+3. Integration tests with mocked AI providers in this CLI repo
+4. Extract shared code (SchemaValidator, SchemaWriter, KnownRecipes, DiagramExporter, AI providers)
+   into a `coding-sunshine/ensemble-schema` shared library to eliminate the current duplication

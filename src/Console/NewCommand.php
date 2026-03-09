@@ -477,7 +477,10 @@ class NewCommand extends Command
                 $createProjectCommand = str_replace(" {$starterKit} ", " {$starterKit}:dev-workos ", $createProjectCommand);
             }
 
-            if (! $this->usingLaravelStarterKit($input) && str_contains($starterKit, '://')) {
+            if (! $this->usingLaravelStarterKit($input)) {
+                // All non-laravel/* starter kits are community repos — use tiged so that
+                // GitHub shorthands (owner/repo), prefixed forms (github:owner/repo),
+                // and full URLs (https://github.com/...) all work identically.
                 $createProjectCommand = 'npx tiged@latest '.$starterKit.' "'.$directory.'" && cd "'.$directory.'" && composer install';
             }
         }

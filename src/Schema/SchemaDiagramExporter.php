@@ -2,6 +2,15 @@
 
 namespace CodingSunshine\Ensemble\Schema;
 
+/**
+ * Export ensemble schema as Mermaid ER diagram or schema-graph JSON.
+ *
+ * This class is duplicated in the ensemble Laravel package (CodingSunshine\Ensemble\Studio\DiagramExporter).
+ * The ensemble package version is instantiable; this version uses static methods.
+ * When changing Mermaid output or relationship handling, sync both files.
+ *
+ * @see ensemble/src/Studio/DiagramExporter.php — Laravel package counterpart
+ */
 class SchemaDiagramExporter
 {
     /**
@@ -144,10 +153,20 @@ class SchemaDiagramExporter
     private static function mermaidRelationshipLine(string $from, string $to, string $type, string $label): ?string
     {
         $cardinality = [
-            'hasMany' => '||--o{',
-            'belongsTo' => '}o--||',
-            'hasOne' => '||--||',
-            'belongsToMany' => '}o--o{',
+            // Standard Eloquent
+            'hasMany'         => '||--o{',
+            'belongsTo'       => '}o--||',
+            'hasOne'          => '||--o|',
+            'belongsToMany'   => '}o--o{',
+            // Through
+            'hasManyThrough'  => '||--o{',
+            'hasOneThrough'   => '||--o|',
+            // Polymorphic
+            'morphMany'       => '||--o{',
+            'morphOne'        => '||--o|',
+            'morphTo'         => '}o--||',
+            'morphToMany'     => '}o--o{',
+            'morphedByMany'   => '}o--o{',
         ];
         $symbol = $cardinality[$type] ?? null;
         if ($symbol === null) {

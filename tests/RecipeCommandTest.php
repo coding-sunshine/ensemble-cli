@@ -88,7 +88,9 @@ class RecipeCommandTest extends TestCase
 
         $this->assertSame(0, $tester->getStatusCode());
         $schema = $this->readSchema();
-        $this->assertContains('spatie/laravel-permission', $schema['recipes']);
+        // Recipes are stored as {name, package} objects
+        $packages = array_column($schema['recipes'], 'package');
+        $this->assertContains('spatie/laravel-permission', $packages);
     }
 
     public function test_add_recipe_by_full_package_name(): void
@@ -100,7 +102,9 @@ class RecipeCommandTest extends TestCase
 
         $this->assertSame(0, $tester->getStatusCode());
         $schema = $this->readSchema();
-        $this->assertContains('laravel/cashier', $schema['recipes']);
+        // Recipes are stored as {name, package} objects
+        $packages = array_column($schema['recipes'], 'package');
+        $this->assertContains('laravel/cashier', $packages);
     }
 
     public function test_add_does_not_duplicate_existing_recipe(): void

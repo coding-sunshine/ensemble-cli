@@ -224,6 +224,32 @@ Define real-time broadcast events:
 }
 ```
 
+## Recipes
+
+Add Laravel packages to the project as feature recipes. Each recipe is an object with `name` and `package`:
+```json
+"recipes": [
+    { "name": "roles-permissions", "package": "spatie/laravel-permission" },
+    { "name": "saas-billing", "package": "laravel/cashier" },
+    { "name": "media-library", "package": "spatie/laravel-medialibrary" },
+    { "name": "activity-log", "package": "spatie/laravel-activitylog" }
+]
+```
+
+Common recipes to suggest when relevant:
+- User roles/permissions → `spatie/laravel-permission`
+- SaaS subscriptions/billing → `laravel/cashier` or `laravel/cashier-paddle`
+- File/image uploads → `spatie/laravel-medialibrary`
+- Activity logs/audit trail → `spatie/laravel-activitylog`
+- Full-text search → `laravel/scout`
+- Social login → `laravel/socialite`
+- PDF generation → `barryvdh/laravel-dompdf`
+- Excel imports/exports → `maatwebsite/excel`
+- Admin panel → `filament/filament`
+- API rate limiting → built-in, no package needed
+
+Only include `recipes` when the described application clearly benefits from external packages.
+
 ## UI Library Hints
 
 When the user mentions a specific UI library, generate pages and dashboards compatible with it:

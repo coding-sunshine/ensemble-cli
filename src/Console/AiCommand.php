@@ -48,10 +48,10 @@ class AiCommand extends Command
             return $this->fail($output, "Schema file not found: {$schemaPath}", $jsonOutput);
         }
 
-        $fullSchema = $this->readSchema($schemaPath);
+        [$fullSchema, $readError] = $this->readSchema($schemaPath);
 
         if ($fullSchema === null) {
-            return $this->fail($output, "Invalid JSON in schema file: {$schemaPath}", $jsonOutput);
+            return $this->fail($output, $readError ?? "Could not read schema file: {$schemaPath}", $jsonOutput);
         }
 
         $provider = $this->resolveProvider($input);
@@ -147,20 +147,19 @@ class AiCommand extends Command
     }
 
     /**
-     * Read and JSON-decode a schema file. Returns null on invalid JSON.
+     * Read and decode a schema file. Validates JSON validity and version compatibility
+     * but skips structural validation so the AI can patch broken schemas.
+     * Returns [schema, null] on success or [null, errorMessage] on failure.
      *
-     * @return array<string, mixed>|null
+     * @return array{0: array<string, mixed>|null, 1: string|null}
      */
-    protected function readSchema(string $path): ?array
+    protected function readSchema(string $path): array
     {
-        $contents = file_get_contents($path);
-        $schema   = json_decode($contents, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return null;
+        try {
+            return [SchemaWriter::readLoose($path), null];
+        } catch (\RuntimeException $e) {
+            return [null, $e->getMessage()];
         }
-
-        return $schema;
     }
 
     /**

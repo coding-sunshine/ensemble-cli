@@ -2,6 +2,10 @@
 
 AI-native Laravel application scaffolding. Extends the Laravel installer with AI-powered schema generation and full-stack code scaffolding.
 
+Part of the [Ensemble](https://github.com/coding-sunshine) ecosystem:
+- **ensemble-cli** (this package) — Global CLI for creating Laravel projects with AI-powered schema generation
+- **[ensemble](https://github.com/coding-sunshine/ensemble)** — Project-level code generation from schemas (installed into your Laravel project)
+
 ## Installation
 
 ```bash
@@ -16,11 +20,11 @@ composer global require coding-sunshine/ensemble-cli
 ensemble new my-app
 ```
 
-The CLI will walk you through:
+The CLI walks you through:
 1. **Project name** and directory
 2. **AI interview** — describe your app, pick a stack, choose features
 3. **Schema generation** — AI produces an `ensemble.json` with models, controllers, pages, and recipes
-4. **Project creation** — `composer create-project` with the right starter kit
+4. **Project creation** — `composer create-project` with the right starter kit (or any GitHub repository via `--using`)
 5. **Scaffolding** — installs recipe packages, writes schema, and runs `ensemble:build`
 
 ### Create from a bundled template (no AI needed)
@@ -33,13 +37,23 @@ ensemble new my-app --template=crm
 ensemble new my-app --template=api
 ```
 
+### Use a custom GitHub starter kit
+
+```bash
+ensemble new my-app --using=owner/repo
+ensemble new my-app --using=github:owner/repo
+ensemble new my-app --using=https://github.com/owner/repo
+```
+
+Passes the value straight to `npx tiged@latest`, so all GitHub shorthand formats work — just like `laravel new --using`. The `coding-sunshine/ensemble` package is automatically added to the resulting project.
+
 ### Create a plain Laravel project (no AI)
 
 ```bash
 ensemble new my-app --no-ai
 ```
 
-This behaves like `laravel new`, but the `coding-sunshine/ensemble` package is still installed as a dev dependency so you can add a schema later.
+Behaves like `laravel new`, but `coding-sunshine/ensemble` is still installed so you can add a schema later.
 
 ### Generate a schema without creating a project
 
@@ -63,7 +77,7 @@ ensemble new my-app --from=schema.json -n
 ensemble new my-app --template=saas --pest --database=sqlite -n
 ```
 
-When `-n` (non-interactive) is set with a schema or template, sensible defaults are auto-applied: starter kit from schema, Pest for testing, SQLite for database.
+When `-n` (non-interactive) is set with a schema or template, sensible defaults are auto-applied.
 
 ### Extend an existing schema
 
@@ -71,7 +85,7 @@ When `-n` (non-interactive) is set with a schema or template, sensible defaults 
 ensemble draft --extend=ensemble.json
 ```
 
-The AI will read your current schema and add to it rather than starting from scratch.
+The AI reads your current schema and adds to it rather than starting from scratch.
 
 ### Preview before creating (`--dry-run`)
 
@@ -80,8 +94,6 @@ ensemble new my-app --from=schema.json --dry-run
 ensemble init --template=saas --dry-run
 ```
 
-Shows what would happen — starter kit, packages, models, steps — without creating or modifying anything.
-
 ### Validate a schema
 
 ```bash
@@ -89,15 +101,11 @@ ensemble validate
 ensemble validate path/to/ensemble.json
 ```
 
-Reports errors and warnings without creating anything. Inside a Laravel project, `php artisan ensemble:validate --json` returns machine-readable output with fix suggestions (for AI or automation).
-
 ### Compare two schemas
 
 ```bash
 ensemble diff old-schema.json new-schema.json
 ```
-
-Shows added, removed, and changed models, fields, controllers, pages, recipes, etc.
 
 ### Export schema as documentation or diagram
 
@@ -108,9 +116,9 @@ ensemble export --format=mermaid -o schema.mmd
 ensemble export --format=schema-graph -o schema-graph.json
 ```
 
-- **markdown** (default) — Human-readable markdown with tables for models, fields, relationships, controllers, pages, and more.
-- **mermaid** — Mermaid ER diagram (entities and relationships). Use `ensemble export --format=mermaid -o schema.mmd` or, inside a Laravel project, `php artisan ensemble:diagram --format=mermaid --output=schema.mmd`.
-- **schema-graph** — JSON with `nodes` and `edges` for tooling or a visual builder.
+- **markdown** (default) — Human-readable tables for models, fields, relationships, controllers, pages
+- **mermaid** — Mermaid ER diagram
+- **schema-graph** — JSON nodes and edges for tooling or a visual builder
 
 ### Add Ensemble to an existing project
 
@@ -121,21 +129,28 @@ ensemble init --from=schema.json
 ensemble init --template=crm
 ```
 
-### After creation: project-level (Artisan) commands
+### Modify a schema with natural language
 
-Once a project has `coding-sunshine/ensemble` installed, you can use these Artisan commands inside the project for AI-friendly iteration:
+```bash
+ensemble ai "add a comments model with a body field and a belongsTo Post"
+ensemble ai "add soft deletes to all models" --provider=openai
+```
 
-| Command | Description |
-|---------|-------------|
-| `php artisan ensemble:append <Model> [--controller] [--fields=...]` | Add a model (and optional controller) to `ensemble.json` without replacing the file |
-| `php artisan ensemble:reduce <Model> [--erase]` | Remove a model from the schema; `--erase` deletes its generated files |
-| `php artisan ensemble:from-database [table] [--build]` | Generate or update `ensemble.json` from your database |
-| `php artisan ensemble:apply <fragment.json> [--build]` | Merge a JSON fragment (e.g. AI-generated) into `ensemble.json` |
-| `php artisan ensemble:validate [--json]` | Validate schema; `--json` returns errors and fix suggestions for automation |
-| `php artisan ensemble:build --dry-run` | Preview what would be generated without writing files |
-| `php artisan ensemble:diff` | Compare current schema with last build |
+### Apply an AI-generated schema patch
 
-See the [ensemble](https://github.com/coding-sunshine/ensemble) package README for the full command list and schema reference.
+```bash
+ensemble update patch.yaml
+ensemble update patch.yaml --yes    # Apply without confirmation
+```
+
+### Manage recipes
+
+```bash
+ensemble recipe list                        # List all known recipes
+ensemble recipe add roles-permissions       # Add a recipe to ensemble.json
+ensemble recipe add spatie/laravel-medialibrary
+ensemble recipe remove roles-permissions
+```
 
 ## Commands
 
@@ -144,12 +159,40 @@ See the [ensemble](https://github.com/coding-sunshine/ensemble) package README f
 | `ensemble new <name>` | Create a new Laravel project with optional AI scaffolding |
 | `ensemble draft` | Generate an `ensemble.json` schema without creating a project |
 | `ensemble init` | Add Ensemble scaffolding to an existing Laravel project |
+| `ensemble ai <prompt>` | Modify a schema using a natural language prompt |
+| `ensemble update <patch>` | Apply a YAML schema patch to `ensemble.json` |
+| `ensemble recipe list\|add\|remove` | Manage recipe entries in `ensemble.json` |
 | `ensemble show [path]` | Pretty-print an `ensemble.json` schema |
 | `ensemble validate [path]` | Validate schema structure and report errors/warnings |
 | `ensemble diff <old> <new>` | Compare two schemas and show differences |
-| `ensemble export [path] [--format=markdown\|mermaid\|schema-graph] [-o file]` | Export schema as markdown, Mermaid ER, or schema-graph JSON |
+| `ensemble export [path] [--format=markdown\|mermaid\|schema-graph] [-o file]` | Export schema |
 | `ensemble config [action]` | View or modify saved CLI configuration |
 | `ensemble doctor` | Check your environment for compatibility |
+
+## After creation: Artisan commands
+
+Once a project has `coding-sunshine/ensemble` installed, use these Artisan commands for AI-friendly iteration:
+
+| Command | Description |
+|---------|-------------|
+| `php artisan ensemble:check [path]` | **Validate + lint + dry-run plan** in one checklist (new) |
+| `php artisan ensemble:build [--dry-run]` | Generate code (or preview without writing) |
+| `php artisan ensemble:fix [--dry-run]` | **AI-powered repair** of validation errors (new) |
+| `php artisan ensemble:why <file>` | Show which generator produced a file and its source model (new) |
+| `php artisan ensemble:packages [--all]` | List installed packages and available Ensemble features (new) |
+| `php artisan ensemble:validate [--json]` | Validate schema; `--json` for automation |
+| `php artisan ensemble:lint [--fix]` | Lint for design errors: FK indexes, N+1 risks, security (new checks) |
+| `php artisan ensemble:append <Model>` | Add a model to `ensemble.json` |
+| `php artisan ensemble:reduce <Model>` | Remove a model from schema |
+| `php artisan ensemble:from-database` | Generate schema from DB |
+| `php artisan ensemble:apply <fragment.json>` | Merge a JSON fragment into `ensemble.json` |
+| `php artisan ensemble:diff` | Compare current schema with last build |
+| `php artisan ensemble:relationship` | Add a relationship between models |
+| `php artisan ensemble:trace` | Reverse-engineer existing models into schema |
+| `php artisan ensemble:diagram` | Export schema as ER diagram or graph JSON |
+| `php artisan ensemble:analyze` | Detect stack, packages, and database |
+
+See the [ensemble](https://github.com/coding-sunshine/ensemble) package README for the full command reference, schema format, and configuration options.
 
 ## AI Providers
 
@@ -159,8 +202,11 @@ See the [ensemble](https://github.com/coding-sunshine/ensemble) package README f
 | OpenAI | `--provider=openai` | `gpt-4o` | `OPENAI_API_KEY` |
 | OpenRouter | `--provider=openrouter` | `anthropic/claude-sonnet-4` | `OPENROUTER_API_KEY` |
 | Ollama | `--provider=ollama` | `llama3.1` | None (local) |
+| Prism | `--provider=prism` | Configured in `config/prism.php` | Via Prism config |
 
-Set `ENSEMBLE_API_KEY` as a universal key that works with any cloud provider. Override the model with `--model=your-model-name`.
+Set `ENSEMBLE_API_KEY` as a universal key that works with any cloud provider.
+
+**Prism:** Requires `composer require prism-php/prism` and a Laravel application context. Use Prism to access any LLM supported by the prism-php library through a unified interface.
 
 For Ollama on a remote host, set `OLLAMA_HOST=http://your-host:11434`.
 
@@ -199,6 +245,10 @@ The `ensemble.json` file describes your entire application:
                 "owner": "belongsTo:User"
             },
             "softDeletes": true,
+            "meta": {
+                "seeder_count": 20,
+                "seeder_states": ["active"]
+            },
             "policies": {
                 "update": "owner or admin"
             }
@@ -252,9 +302,10 @@ Field syntax follows [Laravel Blueprint](https://blueprint.laravelshift.com/) co
 |--------|-------------|
 | `--from=<path>` | Create project from an existing `ensemble.json` |
 | `-t, --template=<name>` | Use a bundled template (saas, blog, ecommerce, crm, api) |
+| `--using=<repo>` | GitHub repo / URL for a custom starter kit (owner/repo, github:owner/repo, https://…) |
 | `--dry-run` | Show what would happen without creating anything |
 | `--no-ai` | Skip AI, create a plain Laravel project |
-| `--provider=<name>` | AI provider (anthropic, openai, openrouter, ollama) |
+| `--provider=<name>` | AI provider (anthropic, openai, openrouter, ollama, prism) |
 | `--model=<name>` | Override the default AI model |
 | `--api-key=<key>` | API key for the AI provider |
 | `--ai-budget=<level>` | Budget for `ensemble:build` (none, low, medium, high) |
@@ -291,6 +342,38 @@ Field syntax follows [Laravel Blueprint](https://blueprint.laravelshift.com/) co
 | `--api-key=<key>` | API key |
 | `--ai-budget=<level>` | Budget for `ensemble:build` |
 
+### `ensemble ai`
+
+```
+ensemble ai <prompt> [--provider=...] [--model=...] [--api-key=...] [--schema=path]
+```
+
+Interprets natural language to modify `ensemble.json`. Examples:
+
+```bash
+ensemble ai "add an Order model with a total decimal and a belongsTo User"
+ensemble ai "give all models soft deletes"
+ensemble ai "add a comments recipe"
+```
+
+### `ensemble update`
+
+```
+ensemble update <patch.yaml> [--yes] [--provider=...] [--model=...]
+```
+
+Applies a YAML schema patch. Use `--yes` to skip confirmation.
+
+### `ensemble recipe`
+
+```
+ensemble recipe list
+ensemble recipe add <feature-key-or-package>
+ensemble recipe remove <feature-key-or-package>
+```
+
+Known feature keys: `roles-permissions`, `saas-billing`, `media-uploads`, `search`, `activity-log`, `admin-panel`, `multi-tenancy`, `api-auth`, `notifications`.
+
 ### `ensemble validate`
 
 ```
@@ -305,13 +388,11 @@ Validates schema structure and reports errors/warnings. Default path: `./ensembl
 ensemble diff <old-path> <new-path>
 ```
 
-Compares two schema files and shows added, removed, and changed items across all sections.
-
 ### `ensemble export`
 
 | Option | Description |
 |--------|-------------|
-| `-f, --format=<format>` | Output format: `markdown` (default), `mermaid`, or `schema-graph` |
+| `-f, --format=<format>` | `markdown` (default), `mermaid`, or `schema-graph` |
 | `-o, --output=<path>` | Write to a file instead of stdout |
 
 ### `ensemble config`
@@ -343,7 +424,7 @@ API key resolution priority: `--api-key` flag > `ENSEMBLE_API_KEY` > provider-sp
 1. **Interview** — The CLI uses `laravel/prompts` to ask about your app: description, frontend stack, UI library, and features
 2. **AI generation** — Your description is sent to the chosen AI provider with a system prompt that returns structured JSON
 3. **Validation** — The response is parsed, validated for structural correctness, and merged with your interactive choices
-4. **Project creation** — A Laravel project is created with the appropriate starter kit
+4. **Project creation** — A Laravel project is created with the appropriate starter kit (or a custom GitHub repo via `--using`)
 5. **Scaffolding** — The companion `coding-sunshine/ensemble` package reads the schema and generates models, migrations, controllers, views, and more
 
 ## License

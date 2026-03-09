@@ -2,13 +2,21 @@
 
 namespace CodingSunshine\Ensemble\Recipes;
 
+/**
+ * Catalog of known Laravel package recipes.
+ *
+ * This class is duplicated in the ensemble Laravel package (CodingSunshine\Ensemble\Recipes\KnownRecipes).
+ * When adding, removing, or updating recipe entries, sync both files.
+ *
+ * @see ensemble/src/Recipes/KnownRecipes.php — Laravel package counterpart
+ */
 class KnownRecipes
 {
     private static array $recipes = [
         [
             'name' => 'roles-permissions',
             'package' => 'spatie/laravel-permission',
-            'feature_key' => 'roles',
+            'feature_key' => 'roles-permissions',
             'description' => 'Role-based access control using Spatie Permission',
             'tags' => ['auth', 'roles', 'permissions', 'spatie'],
             'traits' => ['User' => 'Spatie\\Permission\\Traits\\HasRoles'],
@@ -17,7 +25,7 @@ class KnownRecipes
         [
             'name' => 'saas-billing',
             'package' => 'laravel/cashier',
-            'feature_key' => 'billing',
+            'feature_key' => 'saas-billing',
             'description' => 'SaaS billing and subscriptions using Laravel Cashier',
             'tags' => ['billing', 'stripe', 'subscriptions', 'saas'],
             'traits' => ['User' => 'Laravel\\Cashier\\Billable'],
@@ -26,7 +34,7 @@ class KnownRecipes
         [
             'name' => 'media-uploads',
             'package' => 'spatie/laravel-medialibrary',
-            'feature_key' => 'media',
+            'feature_key' => 'media-uploads',
             'description' => 'Media uploads and library management using Spatie MediaLibrary',
             'tags' => ['media', 'uploads', 'files', 'images', 'spatie'],
             'traits' => [],
@@ -44,7 +52,7 @@ class KnownRecipes
         [
             'name' => 'activity-log',
             'package' => 'spatie/laravel-activitylog',
-            'feature_key' => 'activity',
+            'feature_key' => 'activity-log',
             'description' => 'Activity logging using Spatie Activity Log',
             'tags' => ['activity', 'audit', 'log', 'spatie'],
             'traits' => [],
@@ -53,7 +61,7 @@ class KnownRecipes
         [
             'name' => 'admin-panel',
             'package' => 'filament/filament',
-            'feature_key' => 'admin',
+            'feature_key' => 'admin-panel',
             'description' => 'Admin panel using Filament',
             'tags' => ['admin', 'panel', 'filament', 'crud'],
             'traits' => [],
@@ -62,7 +70,7 @@ class KnownRecipes
         [
             'name' => 'multi-tenancy',
             'package' => 'stancl/tenancy',
-            'feature_key' => 'tenancy',
+            'feature_key' => 'multi-tenancy',
             'description' => 'Multi-tenancy support using Tenancy for Laravel',
             'tags' => ['tenancy', 'multi-tenant', 'saas'],
             'traits' => [],
@@ -71,7 +79,7 @@ class KnownRecipes
         [
             'name' => 'api-auth',
             'package' => 'laravel/sanctum',
-            'feature_key' => 'api',
+            'feature_key' => 'api-auth',
             'description' => 'API authentication using Laravel Sanctum',
             'tags' => ['api', 'auth', 'tokens', 'sanctum'],
             'traits' => [],

@@ -77,10 +77,13 @@ class RecipeCommand extends Command
 
             if (! empty($schemaRecipes)) {
                 $output->writeln('  <options=bold>In Your Schema</>');
-                foreach ($schemaRecipes as $package) {
-                    $known = KnownRecipes::findByPackage($package);
-                    $label = $known ? " ({$known['name']})" : '';
-                    $output->writeln("    <fg=yellow>•</> {$package}{$label}");
+                foreach ($schemaRecipes as $recipe) {
+                    // Support both object format {name, package} and legacy bare strings
+                    $packageName = is_array($recipe) ? ($recipe['package'] ?? $recipe['name'] ?? '?') : (string) $recipe;
+                    $recipeName  = is_array($recipe) ? ($recipe['name'] ?? null) : null;
+                    $known = KnownRecipes::findByPackage($packageName);
+                    $label = ($recipeName && $recipeName !== $packageName) ? " ({$recipeName})" : ($known ? " ({$known['name']})" : '');
+                    $output->writeln("    <fg=yellow>•</> {$packageName}{$label}");
                 }
                 $output->writeln('');
             }
@@ -115,13 +118,18 @@ class RecipeCommand extends Command
         $schema = $this->readSchema($schemaPath);
         $recipes = $schema['recipes'] ?? [];
 
-        if (in_array($package, $recipes, true)) {
+        // Check for duplicate using package field from object format or bare string
+        if ($this->recipeExists($recipes, $package)) {
             $output->writeln("  <fg=yellow>Already added:</> {$package}");
 
             return Command::SUCCESS;
         }
 
-        $recipes[] = $package;
+        // Resolve human-readable name from KnownRecipes, fall back to last segment of package
+        $known = KnownRecipes::findByPackage($package);
+        $recipeName = $known ? $known['name'] : (str_contains($package, '/') ? explode('/', $package)[1] : $package);
+
+        $recipes[] = ['name' => $recipeName, 'package' => $package];
         $schema['recipes'] = $recipes;
 
         SchemaWriter::write($schemaPath, $schema);
@@ -152,13 +160,17 @@ class RecipeCommand extends Command
         $schema = $this->readSchema($schemaPath);
         $recipes = $schema['recipes'] ?? [];
 
-        if (! in_array($package, $recipes, true)) {
+        if (! $this->recipeExists($recipes, $package)) {
             $output->writeln("  <fg=yellow>Not found in schema:</> {$package}");
 
             return Command::SUCCESS;
         }
 
-        $schema['recipes'] = array_values(array_filter($recipes, fn ($r) => $r !== $package));
+        $schema['recipes'] = array_values(array_filter($recipes, function ($r) use ($package) {
+            $pkg = is_array($r) ? ($r['package'] ?? $r['name'] ?? null) : (string) $r;
+
+            return $pkg !== $package;
+        }));
 
         SchemaWriter::write($schemaPath, $schema);
 
@@ -273,8 +285,27 @@ class RecipeCommand extends Command
     // -------------------------------------------------------------------------
 
     /**
-     * Resolve a recipe name or feature key to its Composer package name.
+     * Check whether a package is already present in the recipes array.
+     * Handles both object format [{name, package}] and legacy bare-string format.
+     *
+     * @param  array<int, mixed>  $recipes
+     */
+    private function recipeExists(array $recipes, string $package): bool
+    {
+        foreach ($recipes as $recipe) {
+            $pkg = is_array($recipe) ? ($recipe['package'] ?? $recipe['name'] ?? null) : (string) $recipe;
+            if ($pkg === $package) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Resolve a recipe name, feature key, or tag to its Composer package name.
      * Returns the input unchanged if it looks like a full package name (contains /).
+     * Lookup order: feature_key → name → single-matching tag.
      */
     private function resolvePackage(string $name): ?string
     {
@@ -283,20 +314,24 @@ class RecipeCommand extends Command
             return $name;
         }
 
-        // Try by feature key first
+        // Try by feature key
         $recipe = KnownRecipes::findByFeatureKey($name);
-
         if ($recipe !== null) {
             return $recipe['package'];
         }
 
         // Try by recipe name
         $all = KnownRecipes::all();
-
         foreach ($all as $recipe) {
             if ($recipe['name'] === $name) {
                 return $recipe['package'];
             }
+        }
+
+        // Try by tag (only if exactly one recipe matches, to avoid ambiguity)
+        $tagMatches = KnownRecipes::searchByTag($name);
+        if (count($tagMatches) === 1) {
+            return $tagMatches[0]['package'];
         }
 
         return null;

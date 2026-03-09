@@ -6,6 +6,7 @@ use CodingSunshine\Ensemble\AI\Providers\AnthropicProvider;
 use CodingSunshine\Ensemble\AI\Providers\OllamaProvider;
 use CodingSunshine\Ensemble\AI\Providers\OpenAIProvider;
 use CodingSunshine\Ensemble\AI\Providers\OpenRouterProvider;
+use CodingSunshine\Ensemble\AI\Providers\PrismProvider;
 use CodingSunshine\Ensemble\AI\Providers\ProviderContract;
 use CodingSunshine\Ensemble\Config\ConfigStore;
 use RuntimeException;
@@ -49,8 +50,12 @@ trait ResolvesAIProvider
             'ollama' => new OllamaProvider(
                 model: $model ?: 'llama3.1',
             ),
+            'prism' => new PrismProvider(
+                provider: ($input->hasOption('prism-provider') ? $input->getOption('prism-provider') : null),
+                model: $model ?: null,
+            ),
             default => throw new \InvalidArgumentException(
-                "Unknown provider [{$providerName}]. Supported: anthropic, openai, openrouter, ollama."
+                "Unknown provider [{$providerName}]. Supported: anthropic, openai, openrouter, ollama, prism."
             ),
         };
 
@@ -88,6 +93,7 @@ trait ResolvesAIProvider
                 'openai' => 'OpenAI (GPT-4o)',
                 'openrouter' => 'OpenRouter (multi-model)',
                 'ollama' => 'Ollama (local, free)',
+                'prism' => 'Prism (prism-php/prism)',
             ],
             default: $savedProvider ?: 'anthropic',
         );

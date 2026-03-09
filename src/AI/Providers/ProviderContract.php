@@ -2,6 +2,17 @@
 
 namespace CodingSunshine\Ensemble\AI\Providers;
 
+/**
+ * Request/response AI provider contract for ensemble-cli (schema generation).
+ *
+ * This interface is intentionally different from the one in the ensemble Laravel package
+ * (CodingSunshine\Ensemble\AI\Providers\ProviderContract in ensemble/src/AI/Providers/).
+ * The CLI needs structured output and request/response semantics; the Studio uses
+ * streaming SSE. Both packages duplicate the three core providers (OpenAI, Anthropic,
+ * OpenRouter). When fixing bugs in one provider, sync the change to the other package.
+ *
+ * @see ensemble/src/AI/Providers/ProviderContract.php — Studio (streaming) counterpart
+ */
 interface ProviderContract
 {
     /**

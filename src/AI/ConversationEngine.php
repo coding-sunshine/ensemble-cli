@@ -297,20 +297,6 @@ class ConversationEngine
         return 'You are an expert Laravel application architect. Given a description, return ONLY valid JSON with models, controllers, pages, recipes, notifications, and workflows sections. Follow Laravel Blueprint field syntax conventions.';
     }
 
-    /**
-     * Strip markdown code fences and extract raw JSON from AI response.
-     */
-    protected function extractJson(string $response): string
-    {
-        $response = trim($response);
-
-        if (preg_match('/```(?:json)?\s*\n?(.*?)\n?```/s', $response, $matches)) {
-            return trim($matches[1]);
-        }
-
-        return $response;
-    }
-
     protected function displaySummary(array $schema): void
     {
         $counts = [

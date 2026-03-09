@@ -2,6 +2,15 @@
 
 namespace CodingSunshine\Ensemble\Schema;
 
+/**
+ * Validates an ensemble.json schema array and returns errors and warnings.
+ *
+ * This class is duplicated in the ensemble Laravel package (CodingSunshine\Ensemble\SchemaValidator).
+ * The ensemble package version is lighter; this version is more thorough (full field-type validation).
+ * When adding new schema sections or changing validation logic, sync both files.
+ *
+ * @see ensemble/src/SchemaValidator.php — Laravel package counterpart
+ */
 class SchemaValidator
 {
     protected const VALID_FIELD_TYPES = [

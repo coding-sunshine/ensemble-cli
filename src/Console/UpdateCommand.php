@@ -14,6 +14,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
 
+use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\spin;
 use function Laravel\Prompts\textarea;
 
@@ -30,6 +31,8 @@ class UpdateCommand extends Command
             ->addArgument('directory', InputArgument::REQUIRED, 'Path to the Laravel project directory')
             ->addOption('prompt', null, InputOption::VALUE_REQUIRED, 'Natural language description of the change to make')
             ->addOption('build', null, InputOption::VALUE_NONE, 'Run php artisan ensemble:build after updating the schema')
+            ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Show diff only, do not write changes')
+            ->addOption('apply', null, InputOption::VALUE_NONE, 'Skip confirmation and apply changes immediately')
             ->addOption('provider', null, InputOption::VALUE_REQUIRED, 'AI provider (anthropic, openai, openrouter, ollama)')
             ->addOption('api-key', null, InputOption::VALUE_REQUIRED, 'API key for the AI provider')
             ->addOption('model', null, InputOption::VALUE_REQUIRED, 'AI model to use');
@@ -37,8 +40,10 @@ class UpdateCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $directory = rtrim($input->getArgument('directory'), '/\\');
+        $directory  = rtrim($input->getArgument('directory'), '/\\');
         $schemaPath = $directory.'/ensemble.json';
+        $isDryRun   = (bool) $input->getOption('dry-run');
+        $applyFlag  = (bool) $input->getOption('apply');
 
         if (! file_exists($schemaPath)) {
             $output->writeln('');
@@ -48,11 +53,11 @@ class UpdateCommand extends Command
             return Command::FAILURE;
         }
 
-        $fullSchema = $this->readSchema($schemaPath);
+        [$fullSchema, $readError] = $this->readSchema($schemaPath);
 
         if ($fullSchema === null) {
             $output->writeln('');
-            $output->writeln("  <fg=red>Error:</> Invalid JSON in schema file: {$schemaPath}");
+            $output->writeln("  <fg=red>Error:</> " . ($readError ?? "Could not read schema file: {$schemaPath}"));
             $output->writeln('');
 
             return Command::FAILURE;
@@ -108,14 +113,37 @@ class UpdateCommand extends Command
         $output->writeln('');
 
         if (! empty($errors)) {
-            $output->writeln('  <fg=red;options=bold>Validation Errors (patch may be incomplete)</>');
+            $output->writeln('  <fg=red;options=bold>Validation Errors — patch could not be fully resolved:</>');
             foreach ($errors as $error) {
                 $output->writeln("    <fg=red>✗</> {$error}");
             }
             $output->writeln('');
+            $output->writeln('  <fg=yellow>No changes written. Fix the prompt or run ensemble:validate to inspect the schema.</>');
+            $output->writeln('');
+
+            return Command::FAILURE;
         }
 
         $this->displayDiff($diff, $output);
+
+        if ($isDryRun) {
+            $output->writeln('  <fg=gray>Dry run — no changes written.</>');
+            $output->writeln('');
+
+            return Command::SUCCESS;
+        }
+
+        $shouldWrite = $applyFlag || confirm(
+            label: 'Apply these changes to your schema?',
+            default: true,
+        );
+
+        if (! $shouldWrite) {
+            $output->writeln('  <fg=gray>No changes written.</>');
+            $output->writeln('');
+
+            return Command::SUCCESS;
+        }
 
         SchemaWriter::write($schemaPath, $patched);
         $output->writeln("  <fg=green>✓ Schema updated:</> {$schemaPath}");
@@ -129,20 +157,19 @@ class UpdateCommand extends Command
     }
 
     /**
-     * Read and JSON-decode a schema file. Returns null on invalid JSON.
+     * Read and decode a schema file. Validates JSON validity and version compatibility
+     * but skips structural validation so the AI can patch broken schemas.
+     * Returns [schema, null] on success or [null, errorMessage] on failure.
      *
-     * @return array<string, mixed>|null
+     * @return array{0: array<string, mixed>|null, 1: string|null}
      */
-    protected function readSchema(string $path): ?array
+    protected function readSchema(string $path): array
     {
-        $contents = file_get_contents($path);
-        $schema = json_decode($contents, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return null;
+        try {
+            return [SchemaWriter::readLoose($path), null];
+        } catch (\RuntimeException $e) {
+            return [null, $e->getMessage()];
         }
-
-        return $schema;
     }
 
     /**
