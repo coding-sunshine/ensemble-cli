@@ -217,9 +217,9 @@ Field syntax follows Laravel Blueprint conventions. Relationship format is flat:
 | **Base** | Fork of `laravel/installer` | Fork of `laravel-shift/blueprint` |
 | **Install** | `composer global require` | `composer require --dev` (project-level) |
 | **Purpose** | Create projects + AI conversation + schema generation | Read `ensemble.json` → generate all code |
-| **Commands** | `ensemble new`, `draft`, `init`, `show`, `validate`, `diff`, `export`, `config`, `doctor` | `artisan ensemble:build`, `:trace`, `:analyze`, `:ghost`, `:diff`, etc. |
+| **Commands** | `ensemble new`, `draft`, `init`, `show`, `validate`, `diff`, `export`, `config`, `doctor` | `artisan ensemble:build`, `:trace`, `:analyze`, `:validate`, `:diff`, `:append`, `:reduce`, `:from-database`, `:apply`, `:erase`, etc. |
 
-This CLI handles schema creation. The companion package handles code generation from that schema.
+This CLI handles schema creation. The companion package handles code generation from that schema. The package also supports **AI-friendly iteration**: `ensemble:append`, `ensemble:reduce`, `ensemble:from-database`, `ensemble:apply`, and `ensemble:validate --json` (machine-readable errors + suggestions) so schemas can be updated incrementally or by AI without replacing the whole file.
 
 ## What needs building next
 

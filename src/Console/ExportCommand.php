@@ -2,6 +2,7 @@
 
 namespace CodingSunshine\Ensemble\Console;
 
+use CodingSunshine\Ensemble\Schema\SchemaDiagramExporter;
 use CodingSunshine\Ensemble\Schema\SchemaWriter;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -15,18 +16,33 @@ class ExportCommand extends Command
     {
         $this
             ->setName('export')
-            ->setDescription('Export an ensemble.json schema as human-readable markdown')
+            ->setDescription('Export an ensemble.json schema as markdown, Mermaid ER diagram, or schema-graph JSON')
             ->addArgument('path', InputArgument::OPTIONAL, 'Path to the ensemble.json file', './ensemble.json')
-            ->addOption('output', 'o', InputOption::VALUE_REQUIRED, 'Write markdown to a file instead of stdout');
+            ->addOption('format', 'f', InputOption::VALUE_REQUIRED, 'Output format: markdown, mermaid, or schema-graph', 'markdown')
+            ->addOption('output', 'o', InputOption::VALUE_REQUIRED, 'Write to a file instead of stdout');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $schema = SchemaWriter::read($input->getArgument('path'));
-        $markdown = $this->buildMarkdown($schema);
+        $format = $input->getOption('format');
+
+        if (! in_array($format, ['markdown', 'mermaid', 'schema-graph'], true)) {
+            $output->writeln('<error>Format must be: markdown, mermaid, or schema-graph</error>');
+
+            return Command::FAILURE;
+        }
+
+        if ($format === 'mermaid') {
+            $content = SchemaDiagramExporter::toMermaid($schema);
+        } elseif ($format === 'schema-graph') {
+            $content = json_encode(SchemaDiagramExporter::toSchemaGraph($schema), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        } else {
+            $content = $this->buildMarkdown($schema);
+        }
 
         if ($outputPath = $input->getOption('output')) {
-            file_put_contents($outputPath, $markdown);
+            file_put_contents($outputPath, $content);
             $output->writeln('');
             $output->writeln("  <fg=green>Exported to {$outputPath}</>");
             $output->writeln('');
@@ -34,7 +50,7 @@ class ExportCommand extends Command
             return Command::SUCCESS;
         }
 
-        $output->write($markdown);
+        $output->write($content);
 
         return Command::SUCCESS;
     }

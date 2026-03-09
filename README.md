@@ -89,7 +89,7 @@ ensemble validate
 ensemble validate path/to/ensemble.json
 ```
 
-Reports errors and warnings without creating anything. Useful when hand-editing schemas.
+Reports errors and warnings without creating anything. Inside a Laravel project, `php artisan ensemble:validate --json` returns machine-readable output with fix suggestions (for AI or automation).
 
 ### Compare two schemas
 
@@ -99,14 +99,18 @@ ensemble diff old-schema.json new-schema.json
 
 Shows added, removed, and changed models, fields, controllers, pages, recipes, etc.
 
-### Export schema as documentation
+### Export schema as documentation or diagram
 
 ```bash
 ensemble export
 ensemble export ensemble.json -o SCHEMA.md
+ensemble export --format=mermaid -o schema.mmd
+ensemble export --format=schema-graph -o schema-graph.json
 ```
 
-Generates clean markdown with tables for models, fields, relationships, controllers, pages, notifications, workflows, and recipes.
+- **markdown** (default) — Human-readable markdown with tables for models, fields, relationships, controllers, pages, and more.
+- **mermaid** — Mermaid ER diagram (entities and relationships). Use `ensemble export --format=mermaid -o schema.mmd` or, inside a Laravel project, `php artisan ensemble:diagram --format=mermaid --output=schema.mmd`.
+- **schema-graph** — JSON with `nodes` and `edges` for tooling or a visual builder.
 
 ### Add Ensemble to an existing project
 
@@ -116,6 +120,22 @@ ensemble init
 ensemble init --from=schema.json
 ensemble init --template=crm
 ```
+
+### After creation: project-level (Artisan) commands
+
+Once a project has `coding-sunshine/ensemble` installed, you can use these Artisan commands inside the project for AI-friendly iteration:
+
+| Command | Description |
+|---------|-------------|
+| `php artisan ensemble:append <Model> [--controller] [--fields=...]` | Add a model (and optional controller) to `ensemble.json` without replacing the file |
+| `php artisan ensemble:reduce <Model> [--erase]` | Remove a model from the schema; `--erase` deletes its generated files |
+| `php artisan ensemble:from-database [table] [--build]` | Generate or update `ensemble.json` from your database |
+| `php artisan ensemble:apply <fragment.json> [--build]` | Merge a JSON fragment (e.g. AI-generated) into `ensemble.json` |
+| `php artisan ensemble:validate [--json]` | Validate schema; `--json` returns errors and fix suggestions for automation |
+| `php artisan ensemble:build --dry-run` | Preview what would be generated without writing files |
+| `php artisan ensemble:diff` | Compare current schema with last build |
+
+See the [ensemble](https://github.com/coding-sunshine/ensemble) package README for the full command list and schema reference.
 
 ## Commands
 
@@ -127,7 +147,7 @@ ensemble init --template=crm
 | `ensemble show [path]` | Pretty-print an `ensemble.json` schema |
 | `ensemble validate [path]` | Validate schema structure and report errors/warnings |
 | `ensemble diff <old> <new>` | Compare two schemas and show differences |
-| `ensemble export [path]` | Export schema as markdown documentation |
+| `ensemble export [path] [--format=markdown\|mermaid\|schema-graph] [-o file]` | Export schema as markdown, Mermaid ER, or schema-graph JSON |
 | `ensemble config [action]` | View or modify saved CLI configuration |
 | `ensemble doctor` | Check your environment for compatibility |
 
@@ -291,7 +311,8 @@ Compares two schema files and shows added, removed, and changed items across all
 
 | Option | Description |
 |--------|-------------|
-| `-o, --output=<path>` | Write markdown to a file instead of stdout |
+| `-f, --format=<format>` | Output format: `markdown` (default), `mermaid`, or `schema-graph` |
+| `-o, --output=<path>` | Write to a file instead of stdout |
 
 ### `ensemble config`
 
