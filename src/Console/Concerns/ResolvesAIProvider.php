@@ -3,6 +3,9 @@
 namespace CodingSunshine\Ensemble\Console\Concerns;
 
 use CodingSunshine\Ensemble\AI\Providers\AnthropicProvider;
+use CodingSunshine\Ensemble\AI\Providers\ClaudeCliProvider;
+use CodingSunshine\Ensemble\AI\Providers\GeminiCliProvider;
+use CodingSunshine\Ensemble\AI\Providers\LmStudioProvider;
 use CodingSunshine\Ensemble\AI\Providers\OllamaProvider;
 use CodingSunshine\Ensemble\AI\Providers\OpenAIProvider;
 use CodingSunshine\Ensemble\AI\Providers\OpenRouterProvider;
@@ -50,12 +53,15 @@ trait ResolvesAIProvider
             'ollama' => new OllamaProvider(
                 model: $model ?: 'llama3.1',
             ),
+            'claude-cli' => new ClaudeCliProvider(),
+            'gemini-cli' => new GeminiCliProvider(),
+            'lmstudio' => new LmStudioProvider($model ?: 'local'),
             'prism' => new PrismProvider(
                 provider: ($input->hasOption('prism-provider') ? $input->getOption('prism-provider') : null),
                 model: $model ?: null,
             ),
             default => throw new \InvalidArgumentException(
-                "Unknown provider [{$providerName}]. Supported: anthropic, openai, openrouter, ollama, prism."
+                "Unknown provider [{$providerName}]. Supported: anthropic, openai, openrouter, ollama, claude-cli, gemini-cli, lmstudio, prism."
             ),
         };
 
@@ -65,7 +71,7 @@ trait ResolvesAIProvider
     }
 
     /**
-     * Determine which provider to use from flags, saved config, or interactive prompt.
+     * Determine which provider to use from flags, saved config, detected local, or interactive prompt.
      */
     protected function resolveProviderName(InputInterface $input): string
     {
@@ -76,23 +82,44 @@ trait ResolvesAIProvider
         $savedProvider = $this->configStore->get('default_provider');
 
         if ($savedProvider) {
-            $useSaved = confirm(
-                label: "Use saved provider <options=bold>{$savedProvider}</>?",
+            if ($input->isInteractive()) {
+                $useSaved = confirm(
+                    label: "Use saved provider <options=bold>{$savedProvider}</>?",
+                    default: true,
+                );
+
+                if ($useSaved) {
+                    return $savedProvider;
+                }
+            } else {
+                return $savedProvider;
+            }
+        }
+
+        $localProvider = $this->configStore->detectLocalProvider();
+        if ($localProvider !== null && $input->isInteractive()) {
+            $useLocal = confirm(
+                label: "Use detected local provider <options=bold>{$localProvider}</> (no API key)?",
                 default: true,
             );
 
-            if ($useSaved) {
-                return $savedProvider;
+            if ($useLocal) {
+                $this->configStore->set('default_provider', $localProvider);
+
+                return $localProvider;
             }
         }
 
         $providerName = select(
             label: 'Which AI provider would you like to use?',
             options: [
-                'anthropic' => 'Anthropic (Claude)',
+                'anthropic' => 'Anthropic (Claude API)',
                 'openai' => 'OpenAI (GPT-4o)',
                 'openrouter' => 'OpenRouter (multi-model)',
                 'ollama' => 'Ollama (local, free)',
+                'claude-cli' => 'Claude Code CLI (local, no API key)',
+                'gemini-cli' => 'Gemini CLI (local, free tier)',
+                'lmstudio' => 'LM Studio (local, OpenAI-compatible)',
                 'prism' => 'Prism (prism-php/prism)',
             ],
             default: $savedProvider ?: 'anthropic',

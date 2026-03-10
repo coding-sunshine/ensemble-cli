@@ -35,6 +35,7 @@ ensemble new my-app --template=blog
 ensemble new my-app --template=ecommerce
 ensemble new my-app --template=crm
 ensemble new my-app --template=api
+ensemble new my-app --template=project-management
 ```
 
 ### Use a custom GitHub starter kit
@@ -136,6 +137,17 @@ ensemble ai "add a comments model with a body field and a belongsTo Post"
 ensemble ai "add soft deletes to all models" --provider=openai
 ```
 
+### Autonomous AI agent (self-correcting loop)
+
+```bash
+ensemble agent "Add a complete SaaS billing system with plans, subscriptions and invoices"
+ensemble agent "Fix all validation errors in my schema" --max-iterations=5
+ensemble agent "..." --dry-run          # Show final diff, do not write
+ensemble agent "..." --apply            # Skip confirmation prompt
+```
+
+The agent runs a prompt → patch → validate loop. If the patched schema still has validation errors, it automatically feeds them back to the AI and tries again — up to `--max-iterations` times (default 3). Stops as soon as the schema is clean or the limit is reached, then shows a cumulative diff before asking for confirmation.
+
 ### Apply an AI-generated schema patch
 
 ```bash
@@ -160,35 +172,47 @@ ensemble recipe remove roles-permissions
 | `ensemble draft` | Generate an `ensemble.json` schema without creating a project |
 | `ensemble init` | Add Ensemble scaffolding to an existing Laravel project |
 | `ensemble ai <prompt>` | Modify a schema using a natural language prompt |
+| `ensemble agent <prompt> [--max-iterations=N]` | **New** — Autonomous AI agent: prompt → patch → validate, self-corrects until clean |
 | `ensemble update <patch>` | Apply a YAML schema patch to `ensemble.json` |
 | `ensemble recipe list\|add\|remove` | Manage recipe entries in `ensemble.json` |
+| `ensemble template list\|show\|install` | Browse and install bundled project templates (12 templates: saas, blog, ecommerce, crm, api, project-management, marketplace, booking, inventory, helpdesk, lms, social) |
 | `ensemble show [path]` | Pretty-print an `ensemble.json` schema |
 | `ensemble validate [path]` | Validate schema structure and report errors/warnings |
 | `ensemble diff <old> <new>` | Compare two schemas and show differences |
 | `ensemble export [path] [--format=markdown\|mermaid\|schema-graph] [-o file]` | Export schema |
 | `ensemble config [action]` | View or modify saved CLI configuration |
-| `ensemble doctor` | Check your environment for compatibility |
+| `ensemble doctor` | Check environment and **detect local AI** (claude-cli, gemini-cli, LM Studio); recommends provider if none set |
+| `ensemble mcp` | **New** — Run MCP server over stdio (tools: get_schema, update_schema, validate_schema, create_project, build_project, append_model, list_recipes, snapshot_schema, audit_project, search_packages) |
+| `ensemble watch [path] [--auto-build]` | **New** — Watch schema file for changes; optional `--auto-build` to run build on change (debounced) |
 
 ## After creation: Artisan commands
 
-Once a project has `coding-sunshine/ensemble` installed, use these Artisan commands for AI-friendly iteration:
+Once a project has `coding-sunshine/ensemble` installed, use these Artisan commands for AI-friendly iteration.
+
+**Bringing an existing app into Ensemble?** Use `ensemble:adopt` to scan your existing models, relationships, controllers, and installed packages and produce a complete `ensemble.json` in one step. Or load one of the bundled demo schemas with `ensemble:demo` to start from a realistic baseline. The Studio **Adopt** panel (`⊕` icon) provides a visual adoption report showing your models, detected packages, and actionable suggestions.
 
 | Command | Description |
 |---------|-------------|
-| `php artisan ensemble:check [path]` | **Validate + lint + dry-run plan** in one checklist (new) |
+| `php artisan ensemble:check [path]` | Validate + lint + dry-run plan in one checklist |
+| `php artisan ensemble:ci [path] [--plan]` | **New** — CI health gate: validate + lint, exit 1 on any error |
 | `php artisan ensemble:build [--dry-run]` | Generate code (or preview without writing) |
-| `php artisan ensemble:fix [--dry-run]` | **AI-powered repair** of validation errors (new) |
-| `php artisan ensemble:why <file>` | Show which generator produced a file and its source model (new) |
-| `php artisan ensemble:packages [--all]` | List installed packages and available Ensemble features (new) |
+| `php artisan ensemble:fix [--dry-run]` | AI-powered repair of validation errors |
+| `php artisan ensemble:audit [--modified-only] [--json]` | **New** — Show generated files modified since last build |
+| `php artisan ensemble:snapshot [name] [--list] [--rollback] [--delete]` | **New** — Save/restore named schema snapshots |
+| `php artisan ensemble:why <file>` | Show which generator produced a file and its source model |
+| `php artisan ensemble:packages [--all]` | List installed packages and available Ensemble features |
 | `php artisan ensemble:validate [--json]` | Validate schema; `--json` for automation |
-| `php artisan ensemble:lint [--fix]` | Lint for design errors: FK indexes, N+1 risks, security (new checks) |
+| `php artisan ensemble:lint [--fix]` | Lint for design errors: FK indexes, N+1 risks, security |
 | `php artisan ensemble:append <Model>` | Add a model to `ensemble.json` |
 | `php artisan ensemble:reduce <Model>` | Remove a model from schema |
-| `php artisan ensemble:from-database` | Generate schema from DB |
+| `php artisan ensemble:from-database [--watch]` | **New `--watch`** — Generate schema from DB; re-run on migration changes |
 | `php artisan ensemble:apply <fragment.json>` | Merge a JSON fragment into `ensemble.json` |
 | `php artisan ensemble:diff` | Compare current schema with last build |
-| `php artisan ensemble:relationship` | Add a relationship between models |
-| `php artisan ensemble:trace` | Reverse-engineer existing models into schema |
+| `php artisan ensemble:relationship` | Add a relationship between models (previews both sides) |
+| `php artisan ensemble:trace [--write-schema] [--dry-run]` | Reverse-engineer existing models; `--write-schema` also updates `ensemble.json` |
+| `php artisan ensemble:adopt [--dry-run] [--force]` | **New** — Full app adoption: scan models, relationships, controllers, packages → `ensemble.json` |
+| `php artisan ensemble:demo [name] [--list] [--apply]` | **New** — Browse/apply pre-built demo schemas (saas, blog, ecommerce, crm, api, project-management, marketplace, booking, inventory, helpdesk, lms, social) |
+| `php artisan ensemble:install [--force]` | **New** — First-run setup wizard: publish config, detect AI, init schema |
 | `php artisan ensemble:diagram` | Export schema as ER diagram or graph JSON |
 | `php artisan ensemble:analyze` | Detect stack, packages, and database |
 
@@ -202,9 +226,14 @@ See the [ensemble](https://github.com/coding-sunshine/ensemble) package README f
 | OpenAI | `--provider=openai` | `gpt-4o` | `OPENAI_API_KEY` |
 | OpenRouter | `--provider=openrouter` | `anthropic/claude-sonnet-4` | `OPENROUTER_API_KEY` |
 | Ollama | `--provider=ollama` | `llama3.1` | None (local) |
+| Claude CLI | `--provider=claude-cli` | — | None — uses the `claude` CLI tool |
+| Gemini CLI | `--provider=gemini-cli` | — | None — uses the `gemini` CLI tool |
+| LM Studio | `--provider=lmstudio` | Any loaded model | None — runs at `localhost:1234` |
 | Prism | `--provider=prism` | Configured in `config/prism.php` | Via Prism config |
 
 Set `ENSEMBLE_API_KEY` as a universal key that works with any cloud provider.
+
+**Free local AI (no API key):** Install the `claude` CLI (`npm install -g @anthropic-ai/claude`) or `gemini` CLI, or run [LM Studio](https://lmstudio.ai). Run `ensemble doctor` to auto-detect which tools are available and get the right `ensemble config set` suggestion.
 
 **Prism:** Requires `composer require prism-php/prism` and a Laravel application context. Use Prism to access any LLM supported by the prism-php library through a unified interface.
 
@@ -301,7 +330,7 @@ Field syntax follows [Laravel Blueprint](https://blueprint.laravelshift.com/) co
 | Option | Description |
 |--------|-------------|
 | `--from=<path>` | Create project from an existing `ensemble.json` |
-| `-t, --template=<name>` | Use a bundled template (saas, blog, ecommerce, crm, api) |
+| `-t, --template=<name>` | Use a bundled template (saas, blog, ecommerce, crm, api, project-management, marketplace, booking, inventory, helpdesk, lms, social) |
 | `--using=<repo>` | GitHub repo / URL for a custom starter kit (owner/repo, github:owner/repo, https://…) |
 | `--dry-run` | Show what would happen without creating anything |
 | `--no-ai` | Skip AI, create a plain Laravel project |
@@ -323,7 +352,7 @@ Field syntax follows [Laravel Blueprint](https://blueprint.laravelshift.com/) co
 | Option | Description |
 |--------|-------------|
 | `-o, --output=<path>` | Output path (default: `./ensemble.json`) |
-| `-t, --template=<name>` | Use a bundled template instead of AI |
+| `-t, --template=<name>` | Use a bundled template instead of AI (saas, blog, ecommerce, crm, api, project-management, marketplace, booking, inventory, helpdesk, lms, social) |
 | `-e, --extend=<path>` | Extend an existing schema with AI additions |
 | `--provider=<name>` | AI provider |
 | `--model=<name>` | Override AI model |
@@ -335,7 +364,7 @@ Field syntax follows [Laravel Blueprint](https://blueprint.laravelshift.com/) co
 |--------|-------------|
 | `--path=<dir>` | Path to existing Laravel project (default: `.`) |
 | `--from=<path>` | Path to existing `ensemble.json` |
-| `-t, --template=<name>` | Use a bundled template |
+| `-t, --template=<name>` | Use a bundled template (saas, blog, ecommerce, crm, api, project-management, marketplace, booking, inventory, helpdesk, lms, social) |
 | `--dry-run` | Show what would happen without making changes |
 | `--provider=<name>` | AI provider |
 | `--model=<name>` | Override AI model |
@@ -372,7 +401,42 @@ ensemble recipe add <feature-key-or-package>
 ensemble recipe remove <feature-key-or-package>
 ```
 
-Known feature keys: `roles-permissions`, `saas-billing`, `media-uploads`, `search`, `activity-log`, `admin-panel`, `multi-tenancy`, `api-auth`, `notifications`.
+Known feature keys: `roles-permissions`, `saas-billing`, `media-uploads`, `search`, `activity-log`, `admin-panel`, `multi-tenancy`, `api-auth`, `notifications`, `api-docs`, `openapi-cli`, `feature-flags`, `event-sourcing`, `data-transfer`, `query-builder`, `rate-limiting`, `api-versioning`.
+
+Run `ensemble recipe list` for the full catalog with descriptions.
+
+### `ensemble template`
+
+```
+ensemble template list                   # List all 12 bundled templates
+ensemble template show <name>            # Show details and model list for a template
+ensemble template install <name>         # Write the template schema to ensemble.json
+```
+
+Available templates:
+
+| Template | Description |
+|----------|-------------|
+| `saas` | SaaS starter (teams, subscriptions, billing) |
+| `blog` | Blog platform (posts, categories, tags, comments) |
+| `ecommerce` | E-commerce store (products, orders, reviews) |
+| `crm` | CRM (contacts, companies, deals, activities) |
+| `api` | API service (tokens, webhooks, rate limiting) |
+| `project-management` | Project management (workspaces, boards, tasks, time tracking) |
+| `marketplace` | Multi-vendor marketplace (vendors, products, orders) |
+| `booking` | Booking & scheduling (services, providers, appointments) |
+| `inventory` | Inventory management (warehouses, stock, purchase orders) |
+| `helpdesk` | Help desk (tickets, replies, knowledge base) |
+| `lms` | Learning management system (courses, lessons, enrollments) |
+| `social` | Social app (profiles, posts, follows, messaging) |
+
+You can also load external templates from GitHub:
+
+```bash
+ensemble new my-app --using=github:owner/repo
+ensemble new my-app --using=https://raw.githubusercontent.com/owner/repo/main/ensemble.json
+```
+
 
 ### `ensemble validate`
 
@@ -405,7 +469,15 @@ Actions: `list` (default), `get`, `set`, `clear`.
 
 ### `ensemble doctor`
 
-No options. Checks PHP version, extensions, Composer, Git, Node/package managers, AI provider keys, and Ollama connectivity.
+No options. Checks PHP version, extensions, Composer, Git, Node/package managers, and AI setup. **Local AI detection:** if no API key is set, doctor checks for `claude-cli`, `gemini-cli`, and LM Studio (localhost:1234) and recommends a provider. Use with Studio or `ensemble draft` for key-free local workflows.
+
+### `ensemble mcp`
+
+Runs a Model Context Protocol (MCP) server over stdio. Exposes tools for schema read/write, validation, project creation, build, append model, recipes, snapshots, and audit. For AI agents or IDE integrations that speak MCP.
+
+### `ensemble watch`
+
+Watches the schema file (default `ensemble.json` in the current directory) for changes. Use `--auto-build` to run a build after each change (debounced). Run from the project root where `ensemble.json` and `php artisan` are available.
 
 ## Environment Variables
 
@@ -417,6 +489,8 @@ No options. Checks PHP version, extensions, Composer, Git, Node/package managers
 | `OPENROUTER_API_KEY` | OpenRouter API key |
 | `OLLAMA_HOST` | Ollama base URL (default: `http://localhost:11434`) |
 
+**Local AI (no API key):** set provider to `claude-cli`, `gemini-cli`, or `lmstudio` in config or via `ensemble config set provider <name>`. Doctor will suggest one if available.
+
 API key resolution priority: `--api-key` flag > `ENSEMBLE_API_KEY` > provider-specific env var > saved config > interactive prompt.
 
 ## How It Works
@@ -426,6 +500,20 @@ API key resolution priority: `--api-key` flag > `ENSEMBLE_API_KEY` > provider-sp
 3. **Validation** — The response is parsed, validated for structural correctness, and merged with your interactive choices
 4. **Project creation** — A Laravel project is created with the appropriate starter kit (or a custom GitHub repo via `--using`)
 5. **Scaffolding** — The companion `coding-sunshine/ensemble` package reads the schema and generates models, migrations, controllers, views, and more
+
+## Security
+
+### API Keys
+
+Store API keys in environment variables (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.) rather than in saved config. The `~/.ensemble/config.json` file is created with `0600` permissions, but avoid writing keys there if possible.
+
+### MCP Server (`ensemble mcp`)
+
+The CLI MCP server exposes project-creation, schema-write, and audit tools over stdio. It is intended for local dev use only. Do not expose the MCP server's stdin/stdout over a network socket. Only connect trusted AI agents to it.
+
+### Generated Artisan Commands
+
+`ensemble watch --auto-build` runs `php artisan ensemble:build --dry-run` in the project directory. Ensure the project directory is trusted before enabling `--auto-build` in automated scripts.
 
 ## License
 

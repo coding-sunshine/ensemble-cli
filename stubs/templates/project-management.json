@@ -1,0 +1,128 @@
+{
+    "version": 1,
+    "app": {
+        "name": "project-management",
+        "stack": "inertia-react",
+        "ui": "shadcn"
+    },
+    "models": {
+        "Workspace": {
+            "fields": {
+                "name": "string:200",
+                "slug": "string:200 unique",
+                "owner_id": "id:user",
+                "description": "text nullable",
+                "avatar": "string:500 nullable"
+            },
+            "relationships": {
+                "owner": "belongsTo:User",
+                "members": "belongsToMany:User",
+                "projects": "hasMany:Project"
+            }
+        },
+        "Project": {
+            "fields": {
+                "workspace_id": "id:workspace",
+                "name": "string:200",
+                "slug": "string:200",
+                "description": "text nullable",
+                "status": "enum:active,archived,completed default:active",
+                "color": "string:20 nullable",
+                "start_date": "date nullable",
+                "due_date": "date nullable"
+            },
+            "relationships": {
+                "workspace": "belongsTo:Workspace",
+                "boards": "hasMany:Board",
+                "members": "belongsToMany:User",
+                "tasks": "hasManyThrough:Task,Board"
+            }
+        },
+        "Board": {
+            "fields": {
+                "project_id": "id:project",
+                "name": "string:200",
+                "position": "integer default:0"
+            },
+            "relationships": {
+                "project": "belongsTo:Project",
+                "tasks": "hasMany:Task"
+            }
+        },
+        "Task": {
+            "fields": {
+                "board_id": "id:board",
+                "project_id": "id:project",
+                "title": "string:500",
+                "description": "text nullable",
+                "status": "enum:todo,in_progress,in_review,done default:todo",
+                "priority": "enum:low,medium,high,urgent default:medium",
+                "assigned_to": "id:user nullable",
+                "due_date": "date nullable",
+                "completed_at": "timestamp nullable",
+                "position": "integer default:0",
+                "estimated_hours": "decimal:6,2 nullable"
+            },
+            "relationships": {
+                "board": "belongsTo:Board",
+                "project": "belongsTo:Project",
+                "assignee": "belongsTo:User",
+                "labels": "belongsToMany:Label",
+                "comments": "hasMany:TaskComment",
+                "timeEntries": "hasMany:TimeEntry",
+                "attachments": "morphMany:Attachment"
+            }
+        },
+        "Label": {
+            "fields": {
+                "project_id": "id:project",
+                "name": "string:100",
+                "color": "string:20 default:#6366f1"
+            },
+            "relationships": {
+                "project": "belongsTo:Project",
+                "tasks": "belongsToMany:Task"
+            }
+        },
+        "TaskComment": {
+            "fields": {
+                "task_id": "id:task",
+                "user_id": "id:user",
+                "body": "text"
+            },
+            "relationships": {
+                "task": "belongsTo:Task",
+                "user": "belongsTo:User"
+            }
+        },
+        "TimeEntry": {
+            "fields": {
+                "task_id": "id:task",
+                "user_id": "id:user",
+                "description": "string:500 nullable",
+                "started_at": "timestamp",
+                "stopped_at": "timestamp nullable",
+                "duration_minutes": "integer nullable"
+            },
+            "relationships": {
+                "task": "belongsTo:Task",
+                "user": "belongsTo:User"
+            }
+        }
+    },
+    "controllers": {
+        "Workspace": { "resource": "api" },
+        "Project": { "resource": "api" },
+        "Board": { "resource": "api" },
+        "Task": { "resource": "api" },
+        "Label": { "resource": "api" },
+        "TaskComment": { "resource": "api" },
+        "TimeEntry": { "resource": "api" }
+    },
+    "recipes": [
+        { "name": "roles-permissions", "package": "spatie/laravel-permission" },
+        { "name": "activity-log", "package": "spatie/laravel-activitylog" },
+        { "name": "api-auth", "package": "laravel/sanctum" },
+        { "name": "notifications", "package": null }
+    ]
+}

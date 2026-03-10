@@ -63,6 +63,50 @@ class ConfigStore
     }
 
     /**
+     * Detect the first available local AI provider (no API key required).
+     * Order: claude-cli, gemini-cli, ollama, lmstudio.
+     */
+    public function detectLocalProvider(): ?string
+    {
+        $finder = new \Symfony\Component\Process\ExecutableFinder();
+
+        if ($finder->find('claude') !== null) {
+            $p = new \Symfony\Component\Process\Process(['claude', '--version']);
+            $p->setTimeout(3);
+            $p->run();
+            if ($p->isSuccessful()) {
+                return 'claude-cli';
+            }
+        }
+
+        if ($finder->find('gemini') !== null) {
+            $p = new \Symfony\Component\Process\Process(['gemini', '--version']);
+            $p->setTimeout(3);
+            $p->run();
+            if ($p->isSuccessful()) {
+                return 'gemini-cli';
+            }
+        }
+
+        $p = new \Symfony\Component\Process\Process(['ollama', 'list']);
+        $p->setTimeout(3);
+        $p->run();
+        if ($p->isSuccessful()) {
+            return 'ollama';
+        }
+
+        $client = new \GuzzleHttp\Client(['timeout' => 2, 'connect_timeout' => 1]);
+        try {
+            $client->get('http://localhost:1234/v1/models');
+            return 'lmstudio';
+        } catch (\Throwable) {
+            // ignore
+        }
+
+        return null;
+    }
+
+    /**
      * Get the full config array.
      *
      * @return array<string, mixed>

@@ -42,6 +42,7 @@ class DoctorCommand extends Command
         $this->checkComposer($output);
         $this->checkGit($output);
         $this->checkNode($output);
+        $this->checkLocalAiTools($output);
         $this->checkAiProviders($output);
         $this->checkConfig($output);
         $this->checkSchemaSync($output);
@@ -60,6 +61,7 @@ class DoctorCommand extends Command
         }
 
         $output->writeln('');
+        $this->printNextSteps($output);
 
         return $this->errors > 0 ? Command::FAILURE : Command::SUCCESS;
     }
@@ -148,6 +150,55 @@ class DoctorCommand extends Command
         $this->checkBinary($output, 'yarn', '--version', 'Yarn', optional: true);
     }
 
+    protected function checkLocalAiTools(OutputInterface $output): void
+    {
+        $output->writeln('');
+        $output->writeln('  <options=bold>Local AI Tools Detected</>');
+
+        $tools = [];
+
+        $finder = new ExecutableFinder();
+        if ($finder->find('claude')) {
+            $p = new Process(['claude', '--version']);
+            $p->setTimeout(3);
+            $p->run();
+            if ($p->isSuccessful()) {
+                $tools[] = ['claude-cli', 'Claude Code CLI', '--provider=claude-cli'];
+            }
+        }
+
+        if ($finder->find('gemini')) {
+            $p = new Process(['gemini', '--version']);
+            $p->setTimeout(3);
+            $p->run();
+            if ($p->isSuccessful()) {
+                $tools[] = ['gemini-cli', 'Gemini CLI', '--provider=gemini-cli'];
+            }
+        }
+
+        $p = new Process(['ollama', 'list']);
+        $p->setTimeout(3);
+        $p->run();
+        if ($p->isSuccessful()) {
+            $tools[] = ['ollama', 'Ollama', '--provider=ollama'];
+        }
+
+        $p = new Process(['curl', '-s', '-o', '/dev/null', '-w', '%{http_code}', 'http://localhost:1234/v1/models']);
+        $p->setTimeout(2);
+        $p->run();
+        if ($p->isSuccessful() && trim($p->getOutput()) === '200') {
+            $tools[] = ['lmstudio', 'LM Studio', '--provider=lmstudio'];
+        }
+
+        if ($tools === []) {
+            $output->writeln('    <fg=gray>○</> No local AI tools found (optional)');
+        } else {
+            foreach ($tools as [$provider, $label, $flag]) {
+                $this->pass($output, "{$label} — use {$flag}");
+            }
+        }
+    }
+
     protected function checkAiProviders(OutputInterface $output): void
     {
         $output->writeln('');
@@ -180,8 +231,25 @@ class DoctorCommand extends Command
             $anyFound = true;
         }
 
+        $config = new ConfigStore();
+        $localProvider = $config->detectLocalProvider();
+
+        if ($localProvider !== null) {
+            $this->pass($output, "Local provider available: {$localProvider}");
+            $anyFound = true;
+        }
+
         if (! $anyFound) {
-            $this->warn($output, 'No AI provider keys found. Set one via environment variable or run: ensemble config set providers.anthropic.api_key YOUR_KEY');
+            $this->warn($output, 'No AI provider found.');
+            $output->writeln('    <fg=cyan>→ Next step:</> Set an API key:');
+            $output->writeln('          <comment>ANTHROPIC_API_KEY=sk-ant-... ensemble draft</comment>');
+            $output->writeln('      Or install a free local tool:');
+            $output->writeln('          <comment>npm install -g @anthropic-ai/claude-code</comment>  (claude-cli)');
+            $output->writeln('          <comment>npm install -g @google/gemini-cli</comment>           (gemini-cli)');
+            $output->writeln('      Then: <comment>ensemble config set default_provider claude-cli</comment>');
+        } elseif ($localProvider !== null && ! $config->get('default_provider')) {
+            $output->writeln('    <fg=cyan>ℹ TIP:</> Use local AI with no API key:');
+            $output->writeln('      <comment>ensemble config set default_provider ' . $localProvider . '</comment>');
         }
     }
 
@@ -306,5 +374,27 @@ class DoctorCommand extends Command
         } else {
             $this->warn($output, 'No Node.js package manager found (npm/bun/pnpm) — required to build Ensemble Studio assets');
         }
+    }
+
+    protected function printNextSteps(OutputInterface $output): void
+    {
+        $output->writeln('  <options=bold>Quick start</>');
+        $output->writeln('');
+        $output->writeln('  If everything is ready, create a new project:');
+        $output->writeln('    <comment>ensemble new my-app</comment>');
+        $output->writeln('');
+        $output->writeln('  Generate a schema without a project:');
+        $output->writeln('    <comment>ensemble draft --output=ensemble.json</comment>');
+        $output->writeln('');
+        $output->writeln('  Add Ensemble to an existing Laravel app:');
+        $output->writeln('    <comment>cd your-laravel-app && ensemble init</comment>');
+        $output->writeln('    <comment>php artisan ensemble:install</comment>');
+        $output->writeln('');
+        $output->writeln('  Watch schema for changes:');
+        $output->writeln('    <comment>ensemble watch --auto-build</comment>');
+        $output->writeln('');
+        $output->writeln('  Start the MCP server for AI agents:');
+        $output->writeln('    <comment>ensemble mcp</comment>');
+        $output->writeln('');
     }
 }

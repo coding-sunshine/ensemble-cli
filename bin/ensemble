@@ -9,7 +9,7 @@ if (isset($_composer_autoload_path)) {
     require __DIR__.'/../vendor/autoload.php';
 }
 
-$app = new Symfony\Component\Console\Application('Laravel Ensemble', '0.1.0');
+$app = new Symfony\Component\Console\Application('Laravel Ensemble', '1.0.0');
 
 $commands = [
     new CodingSunshine\Ensemble\Console\NewCommand,
@@ -22,9 +22,12 @@ $commands = [
     new CodingSunshine\Ensemble\Console\ConfigCommand,
     new CodingSunshine\Ensemble\Console\DoctorCommand,
     new CodingSunshine\Ensemble\Console\AiCommand,
+    new CodingSunshine\Ensemble\Console\AgentCommand,
     new CodingSunshine\Ensemble\Console\UpdateCommand,
     new CodingSunshine\Ensemble\Console\RecipeCommand,
     new CodingSunshine\Ensemble\Console\TemplateCommand,
+    new CodingSunshine\Ensemble\Console\McpCommand,
+    new CodingSunshine\Ensemble\Console\WatchCommand,
 ];
 
 foreach ($commands as $command) {

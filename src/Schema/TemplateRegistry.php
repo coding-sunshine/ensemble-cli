@@ -10,17 +10,18 @@ class TemplateRegistry
      * @var array<string, string> Map of template name → description.
      */
     protected const TEMPLATES = [
-        'saas'        => 'SaaS starter (teams, subscriptions, billing)',
-        'blog'        => 'Blog platform (posts, categories, tags, comments)',
-        'ecommerce'   => 'E-commerce store (products, orders, reviews)',
-        'crm'         => 'CRM (contacts, companies, deals, activities)',
-        'api'         => 'API service (tokens, webhooks, rate limiting)',
-        'marketplace' => 'Multi-vendor marketplace (vendors, products, orders)',
-        'booking'     => 'Booking & scheduling (services, providers, appointments)',
-        'inventory'   => 'Inventory management (warehouses, stock, purchase orders)',
-        'helpdesk'    => 'Help desk (tickets, replies, knowledge base)',
-        'lms'         => 'Learning management system (courses, lessons, enrollments)',
-        'social'      => 'Social app (profiles, posts, follows, messaging)',
+        'saas'               => 'SaaS starter (teams, subscriptions, billing)',
+        'blog'               => 'Blog platform (posts, categories, tags, comments)',
+        'ecommerce'          => 'E-commerce store (products, orders, reviews)',
+        'crm'                => 'CRM (contacts, companies, deals, activities)',
+        'api'                => 'API service (tokens, webhooks, rate limiting)',
+        'project-management' => 'Project management (workspaces, boards, tasks, time tracking)',
+        'marketplace'        => 'Multi-vendor marketplace (vendors, products, orders)',
+        'booking'            => 'Booking & scheduling (services, providers, appointments)',
+        'inventory'          => 'Inventory management (warehouses, stock, purchase orders)',
+        'helpdesk'           => 'Help desk (tickets, replies, knowledge base)',
+        'lms'                => 'Learning management system (courses, lessons, enrollments)',
+        'social'             => 'Social app (profiles, posts, follows, messaging)',
     ];
 
     /**

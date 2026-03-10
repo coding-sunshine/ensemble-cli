@@ -608,6 +608,12 @@ class NewCommand extends Command
             }
 
             $output->writeln('');
+
+            // Run ensemble:doctor inside the new project and surface any issues
+            $this->runEnsembleDoctor($directory, $output);
+
+            $this->printEnsembleNextSteps($name, $directory, $output);
+
             $output->writeln('  New to Laravel? Check out our <href=https://laravel.com/docs/installation#next-steps>documentation</>. <options=bold>Build something amazing!</>');
             $output->writeln('');
         }
@@ -669,6 +675,56 @@ class NewCommand extends Command
         } catch (Throwable) {
             warning('Could not run ensemble:build. You can run it manually with:');
             $output->writeln('  <options=bold>php artisan ensemble:build</>');
+            $output->writeln('');
+        }
+    }
+
+    /**
+     * Run php artisan ensemble:doctor in the new project directory and surface any errors/warnings.
+     */
+    protected function runEnsembleDoctor(string $directory, OutputInterface $output): void
+    {
+        $php = $this->phpBinary();
+        $process = new Process([$php, 'artisan', 'ensemble:doctor'], $directory, null, null, 30.0);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            $output->writeln('  <fg=yellow>!</> ensemble:doctor found issues in the new project:');
+            foreach (array_filter(explode("\n", $process->getOutput())) as $line) {
+                if (str_contains($line, '✗') || str_contains($line, '!')) {
+                    $output->writeln('    ' . trim($line));
+                }
+            }
+            $output->writeln('  Run <comment>cd '.$directory.' && php artisan ensemble:doctor</comment> for the full report.');
+            $output->writeln('');
+        }
+    }
+
+    /**
+     * Print the Ensemble-specific "What's next" box after project creation.
+     */
+    protected function printEnsembleNextSteps(string $name, string $directory, OutputInterface $output): void
+    {
+        $studoPath = 'ensemble/studio';
+        $output->writeln('');
+        $output->writeln('  <fg=cyan;options=bold>Ensemble — What\'s next</>');
+        $output->writeln('');
+        $output->writeln("  1. <options=bold>Edit schema</>     <comment>cd {$name}</comment> then open <comment>ensemble.json</comment>");
+        $output->writeln("  2. <options=bold>Studio</>          <comment>http://{$name}.test/{$studoPath}</comment> (visual builder + AI chat)");
+        $output->writeln("  3. <options=bold>Check schema</>    <comment>php artisan ensemble:check</comment>");
+        $output->writeln("  4. <options=bold>Build</>           <comment>php artisan ensemble:build</comment>");
+        $output->writeln("  5. <options=bold>Watch</>           <comment>ensemble watch --auto-build</comment> (from {$name}/)");
+        $output->writeln("  6. <options=bold>Doctor</>          <comment>php artisan ensemble:doctor</comment>");
+        $output->writeln('');
+
+        // If no AI provider found, nudge the user
+        $config = new \CodingSunshine\Ensemble\Config\ConfigStore();
+        $localProvider = $config->detectLocalProvider();
+        if ($localProvider === null && ! getenv('ENSEMBLE_API_KEY') && ! getenv('ANTHROPIC_API_KEY') && ! getenv('OPENAI_API_KEY')) {
+            $output->writeln('  <fg=yellow>No AI provider detected.</>');
+            $output->writeln('  For free local AI, install <comment>claude-cli</comment> or <comment>gemini-cli</comment>:');
+            $output->writeln('    <comment>npm install -g @anthropic-ai/claude-code</comment>');
+            $output->writeln("    Add <comment>ENSEMBLE_AI_PROVIDER=claude-cli</comment> to {$name}/.env");
             $output->writeln('');
         }
     }
