@@ -3,6 +3,7 @@
 namespace CodingSunshine\Ensemble\Console;
 
 use CodingSunshine\Ensemble\Config\ConfigStore;
+use CodingSunshine\Ensemble\Http\LaraPluginsClient;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -46,6 +47,7 @@ class DoctorCommand extends Command
         $this->checkAiProviders($output);
         $this->checkConfig($output);
         $this->checkSchemaSync($output);
+        $this->checkDependencyHealth($output);
         $this->checkHerdValetSail($output);
         $this->checkNpmForStudio($output);
 
@@ -327,6 +329,61 @@ class DoctorCommand extends Command
             $this->fail($output, 'ensemble.json is not valid JSON: '.json_last_error_msg());
         } else {
             $this->pass($output, 'ensemble.json found and valid');
+        }
+    }
+
+    protected function checkDependencyHealth(OutputInterface $output): void
+    {
+        $output->writeln('');
+        $output->writeln('  <options=bold>Dependency Health (laraplugins.io)</>');
+
+        $schemaPath = getcwd().'/ensemble.json';
+
+        if (! file_exists($schemaPath)) {
+            $output->writeln('    <fg=gray>○</> No ensemble.json in current directory — skipping');
+
+            return;
+        }
+
+        $schema = json_decode((string) file_get_contents($schemaPath), true) ?? [];
+        $recipeList = $schema['recipes'] ?? [];
+
+        $packages = [];
+        foreach ($recipeList as $recipe) {
+            $pkg = is_array($recipe) ? ($recipe['package'] ?? null) : (string) $recipe;
+            if ($pkg !== null && $pkg !== '') {
+                $packages[] = $pkg;
+            }
+        }
+
+        if ($packages === []) {
+            $output->writeln('    <fg=gray>○</> No recipes in schema — skipping');
+
+            return;
+        }
+
+        $client = new LaraPluginsClient();
+
+        foreach ($packages as $package) {
+            try {
+                $details = $client->getDetails($package);
+                $health = $details !== null ? ($details['health_score'] ?? $details['health'] ?? null) : null;
+
+                if ($health !== null) {
+                    $badge = $client->formatHealthScore((string) $health);
+                    $score = strtolower((string) $health);
+
+                    if (in_array($score, ['unhealthy', 'poor', 'low', 'bad'], true)) {
+                        $this->warn($output, "{$package} — {$badge}");
+                    } else {
+                        $this->pass($output, "{$package} — {$badge}");
+                    }
+                } else {
+                    $output->writeln("    <fg=gray>○</> {$package} — no health data available");
+                }
+            } catch (\Throwable) {
+                $output->writeln("    <fg=gray>○</> {$package} — laraplugins.io unreachable");
+            }
         }
     }
 

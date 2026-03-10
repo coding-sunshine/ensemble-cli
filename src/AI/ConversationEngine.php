@@ -77,18 +77,7 @@ class ConversationEngine
 
         $features = multiselect(
             label: 'Which features does your application need?',
-            options: [
-                'auth' => 'Authentication (included with starter kit)',
-                'roles' => 'Roles & Permissions (spatie/permission)',
-                'billing' => 'SaaS Billing (Laravel Cashier)',
-                'media' => 'Media Uploads (spatie/medialibrary)',
-                'search' => 'Full-Text Search (Laravel Scout)',
-                'notifications' => 'Notifications',
-                'api' => 'API Authentication (Sanctum)',
-                'admin' => 'Admin Panel (Filament)',
-                'activity' => 'Activity Log (spatie/activitylog)',
-                'tenancy' => 'Multi-Tenancy (stancl/tenancy)',
-            ],
+            options: $this->buildFeatureOptions(),
             default: ['auth'],
             hint: 'Use space to select, enter to confirm.',
         );
@@ -148,6 +137,20 @@ class ConversationEngine
             label: 'Which UI component library for Livewire?',
             options: self::LIVEWIRE_UI_OPTIONS,
             default: 'mary',
+        );
+    }
+
+    /**
+     * Build the interactive multiselect options from KnownRecipes.
+     * 'auth' is prepended as it is always available without a Composer package.
+     *
+     * @return array<string, string>
+     */
+    protected function buildFeatureOptions(): array
+    {
+        return array_merge(
+            ['auth' => 'Authentication (included with starter kit)'],
+            KnownRecipes::toPromptOptions(),
         );
     }
 

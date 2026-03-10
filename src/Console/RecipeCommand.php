@@ -136,6 +136,9 @@ class RecipeCommand extends Command
 
         $output->writeln('');
         $output->writeln("  <fg=green>✓ Added:</> {$package}");
+
+        $this->checkPackageHealth($package, $output);
+
         $output->writeln('');
 
         return Command::SUCCESS;
@@ -348,6 +351,40 @@ class RecipeCommand extends Command
         $schema = json_decode($contents, true);
 
         return is_array($schema) ? $schema : [];
+    }
+
+    /**
+     * Fetch the health score from laraplugins.io and warn if the package is unhealthy or medium.
+     * Silently skips if the API is unreachable or returns no data.
+     */
+    private function checkPackageHealth(string $package, OutputInterface $output): void
+    {
+        try {
+            $client = $this->getLaraPluginsClient();
+            $details = $client->getDetails($package);
+
+            if ($details === null) {
+                return;
+            }
+
+            $health = $details['health_score'] ?? $details['health'] ?? null;
+
+            if ($health === null) {
+                return;
+            }
+
+            $score = strtolower((string) $health);
+            $badge = $client->formatHealthScore($score);
+
+            if (in_array($score, ['unhealthy', 'poor', 'low', 'bad'], true)) {
+                $output->writeln("  <fg=yellow>⚠  Health Warning:</> {$package} is rated <fg=red>{$badge}</> on laraplugins.io.");
+                $output->writeln('  <fg=gray>Review this package carefully before relying on it in production.</>');
+            } elseif (in_array($score, ['medium', 'moderate', 'fair'], true)) {
+                $output->writeln("  <fg=gray>ℹ  Health:</> {$package} has a {$badge} score on laraplugins.io.");
+            }
+        } catch (\Throwable) {
+            // Health check is best-effort; never block the add operation.
+        }
     }
 
     private function getLaraPluginsClient(): LaraPluginsClient

@@ -15,6 +15,7 @@ class KnownRecipes
     private static array $recipes = [
         [
             'name' => 'roles-permissions',
+            'label' => 'Roles & Permissions (spatie/laravel-permission)',
             'package' => 'spatie/laravel-permission',
             'feature_key' => 'roles-permissions',
             'description' => 'Role-based access control using Spatie Permission',
@@ -24,6 +25,7 @@ class KnownRecipes
         ],
         [
             'name' => 'saas-billing',
+            'label' => 'SaaS Billing / Subscriptions (laravel/cashier)',
             'package' => 'laravel/cashier',
             'feature_key' => 'saas-billing',
             'description' => 'SaaS billing and subscriptions using Laravel Cashier',
@@ -33,6 +35,7 @@ class KnownRecipes
         ],
         [
             'name' => 'media-uploads',
+            'label' => 'Media Uploads & Library (spatie/laravel-medialibrary)',
             'package' => 'spatie/laravel-medialibrary',
             'feature_key' => 'media-uploads',
             'description' => 'Media uploads and library management using Spatie MediaLibrary',
@@ -42,6 +45,7 @@ class KnownRecipes
         ],
         [
             'name' => 'search',
+            'label' => 'Full-Text Search (laravel/scout)',
             'package' => 'laravel/scout',
             'feature_key' => 'search',
             'description' => 'Full-text search using Laravel Scout',
@@ -51,6 +55,7 @@ class KnownRecipes
         ],
         [
             'name' => 'activity-log',
+            'label' => 'Activity Log (spatie/laravel-activitylog)',
             'package' => 'spatie/laravel-activitylog',
             'feature_key' => 'activity-log',
             'description' => 'Activity logging using Spatie Activity Log',
@@ -60,6 +65,7 @@ class KnownRecipes
         ],
         [
             'name' => 'admin-panel',
+            'label' => 'Admin Panel (filament/filament)',
             'package' => 'filament/filament',
             'feature_key' => 'admin-panel',
             'description' => 'Admin panel using Filament',
@@ -69,6 +75,7 @@ class KnownRecipes
         ],
         [
             'name' => 'multi-tenancy',
+            'label' => 'Multi-Tenancy (stancl/tenancy)',
             'package' => 'stancl/tenancy',
             'feature_key' => 'multi-tenancy',
             'description' => 'Multi-tenancy support using Tenancy for Laravel',
@@ -78,6 +85,7 @@ class KnownRecipes
         ],
         [
             'name' => 'api-auth',
+            'label' => 'API Authentication (laravel/sanctum)',
             'package' => 'laravel/sanctum',
             'feature_key' => 'api-auth',
             'description' => 'API authentication using Laravel Sanctum',
@@ -87,6 +95,7 @@ class KnownRecipes
         ],
         [
             'name' => 'notifications',
+            'label' => 'Notifications (built-in Laravel channels)',
             'package' => null,
             'feature_key' => 'notifications',
             'description' => 'Laravel notification channels',
@@ -96,6 +105,7 @@ class KnownRecipes
         ],
         [
             'name' => 'api-docs',
+            'label' => 'API Docs / OpenAPI (dedoc/scramble)',
             'package' => 'dedoc/scramble',
             'feature_key' => 'api-docs',
             'description' => 'Auto-generate OpenAPI 3.1 documentation from code — no PHPDoc annotations needed. Complements Ensemble\'s OpenAPI generator.',
@@ -105,6 +115,7 @@ class KnownRecipes
         ],
         [
             'name' => 'openapi-cli',
+            'label' => 'OpenAPI CLI Commands (spatie/laravel-openapi-cli)',
             'package' => 'spatie/laravel-openapi-cli',
             'feature_key' => 'openapi-cli',
             'description' => 'Turn any OpenAPI spec into typed Artisan commands. Use with Ensemble\'s generated openapi.yaml to consume external APIs.',
@@ -114,6 +125,7 @@ class KnownRecipes
         ],
         [
             'name' => 'feature-flags',
+            'label' => 'Feature Flags (laravel/pennant)',
             'package' => 'laravel/pennant',
             'feature_key' => 'feature-flags',
             'description' => 'Feature flags using Laravel Pennant',
@@ -123,6 +135,7 @@ class KnownRecipes
         ],
         [
             'name' => 'event-sourcing',
+            'label' => 'Event Sourcing / CQRS (spatie/laravel-event-sourcing)',
             'package' => 'spatie/laravel-event-sourcing',
             'feature_key' => 'event-sourcing',
             'description' => 'Event sourcing with Spatie Event Sourcing',
@@ -132,6 +145,7 @@ class KnownRecipes
         ],
         [
             'name' => 'data-transfer',
+            'label' => 'Data Objects / DTOs (spatie/laravel-data)',
             'package' => 'spatie/laravel-data',
             'feature_key' => 'data-transfer',
             'description' => 'Typed data objects using Spatie Laravel Data. Pairs well with API resources and Scramble docs.',
@@ -141,6 +155,7 @@ class KnownRecipes
         ],
         [
             'name' => 'query-builder',
+            'label' => 'Filterable & Sortable API Queries (spatie/laravel-query-builder)',
             'package' => 'spatie/laravel-query-builder',
             'feature_key' => 'query-builder',
             'description' => 'Filterable, sortable, and includable API queries using Spatie Query Builder',
@@ -150,6 +165,7 @@ class KnownRecipes
         ],
         [
             'name' => 'rate-limiting',
+            'label' => 'Rate Limiting (built-in throttle middleware)',
             'package' => null,
             'feature_key' => 'rate-limiting',
             'description' => 'Laravel API rate limiting (built-in throttle middleware)',
@@ -159,6 +175,7 @@ class KnownRecipes
         ],
         [
             'name' => 'api-versioning',
+            'label' => 'API Versioning via route prefix (built-in)',
             'package' => null,
             'feature_key' => 'api-versioning',
             'description' => 'API versioning via route prefix (v1, v2)',
@@ -228,5 +245,21 @@ class KnownRecipes
         }
 
         return $map;
+    }
+
+    /**
+     * Returns a map of feature_key => label suitable for use in interactive prompts.
+     * Each label is a concise, human-readable string describing the feature.
+     *
+     * @return array<string, string>
+     */
+    public static function toPromptOptions(): array
+    {
+        $options = [];
+        foreach (static::$recipes as $recipe) {
+            $options[$recipe['feature_key']] = $recipe['label'];
+        }
+
+        return $options;
     }
 }

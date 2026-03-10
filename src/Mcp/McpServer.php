@@ -6,12 +6,13 @@ use CodingSunshine\Ensemble\Mcp\Tools\AppendModelTool;
 use CodingSunshine\Ensemble\Mcp\Tools\AuditProjectTool;
 use CodingSunshine\Ensemble\Mcp\Tools\BuildProjectTool;
 use CodingSunshine\Ensemble\Mcp\Tools\CreateProjectTool;
+use CodingSunshine\Ensemble\Mcp\Tools\GetPackageDetailsTool;
 use CodingSunshine\Ensemble\Mcp\Tools\GetSchemaTool;
 use CodingSunshine\Ensemble\Mcp\Tools\ListRecipesTool;
+use CodingSunshine\Ensemble\Mcp\Tools\McpToolInterface;
 use CodingSunshine\Ensemble\Mcp\Tools\SearchPackagesTool;
 use CodingSunshine\Ensemble\Mcp\Tools\SnapshotSchemaTool;
 use CodingSunshine\Ensemble\Mcp\Tools\UpdateSchemaTool;
-use CodingSunshine\Ensemble\Mcp\Tools\McpToolInterface;
 use CodingSunshine\Ensemble\Mcp\Tools\ValidateSchemaTool;
 
 /**
@@ -38,6 +39,7 @@ class McpServer
             new SnapshotSchemaTool,
             new AuditProjectTool,
             new SearchPackagesTool,
+            new GetPackageDetailsTool,
         ];
     }
 
