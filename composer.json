@@ -1,5 +1,6 @@
 {
     "name": "coding-sunshine/ensemble-cli",
+    "version": "5.24.7",
     "type": "library",
     "description": "AI-native Laravel application ensemble. Extends the Laravel installer with AI-powered schema generation and full-stack code scaffolding.",
     "keywords": [
