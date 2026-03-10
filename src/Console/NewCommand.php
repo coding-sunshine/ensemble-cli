@@ -745,8 +745,6 @@ class NewCommand extends Command
         SchemaWriter::write($schemaPath, $this->schema);
         info('Wrote ensemble.json to project root.');
 
-        @mkdir($directory.'/.ensemble', 0755, true);
-
         $this->installRecipePackages($directory, $input, $output);
 
         try {

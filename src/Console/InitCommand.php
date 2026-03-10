@@ -99,8 +99,6 @@ class InitCommand extends Command
         SchemaWriter::write($schemaPath, $schema);
         info('Wrote ensemble.json to project root.');
 
-        @mkdir($directory.'/.ensemble', 0755, true);
-
         $this->installRecipePackages($directory, $schema, $input, $output);
         $this->installEnsemblePackage($directory, $input, $output);
 
