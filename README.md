@@ -164,6 +164,8 @@ ensemble recipe add spatie/laravel-medialibrary
 ensemble recipe remove roles-permissions
 ```
 
+The list of features in `ensemble new` is **dynamic**: it comes from the known recipe catalog, so new recipes appear automatically. When you add a recipe, the CLI optionally checks [LaraPlugins.io](https://laraplugins.io) and shows a health warning for packages with low health scores. Run `ensemble doctor` to see dependency health for all recipe packages in your project.
+
 ## Commands
 
 | Command | Description |
@@ -469,11 +471,11 @@ Actions: `list` (default), `get`, `set`, `clear`.
 
 ### `ensemble doctor`
 
-No options. Checks PHP version, extensions, Composer, Git, Node/package managers, and AI setup. **Local AI detection:** if no API key is set, doctor checks for `claude-cli`, `gemini-cli`, and LM Studio (localhost:1234) and recommends a provider. Use with Studio or `ensemble draft` for key-free local workflows.
+No options. Checks PHP version, extensions, Composer, Git, Node/package managers, and AI setup. **Local AI detection:** if no API key is set, doctor checks for `claude-cli`, `gemini-cli`, and LM Studio (localhost:1234) and recommends a provider. **Dependency health:** if the current directory has an `ensemble.json` with recipes, doctor fetches package health from [LaraPlugins.io](https://laraplugins.io) and shows a status line per recipe (healthy/medium/unhealthy). Use with Studio or `ensemble draft` for key-free local workflows.
 
 ### `ensemble mcp`
 
-Runs a Model Context Protocol (MCP) server over stdio. Exposes tools for schema read/write, validation, project creation, build, append model, recipes, snapshots, and audit. For AI agents or IDE integrations that speak MCP.
+Runs a Model Context Protocol (MCP) server over stdio. Exposes tools for schema read/write, validation, project creation, build, append model, recipes, snapshots, audit, **package search** (`search_packages`, with optional `healthy_only` filter), and **package details** (`get_package_details`, including health score from [LaraPlugins.io](https://laraplugins.io)). For AI agents or IDE integrations that speak MCP.
 
 ### `ensemble watch`
 

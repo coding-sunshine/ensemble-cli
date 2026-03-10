@@ -47,6 +47,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.0.3] - 2026-03-10
+
+### Added
+
+- **LaraPlugins.io integration:** Package health data from [LaraPlugins.io](https://laraplugins.io) is used in several places:
+  - `ensemble doctor` — when run in a project with `ensemble.json`, shows dependency health for each recipe package (healthy/medium/unhealthy).
+  - `ensemble recipe add <name>` — after adding a recipe, optionally fetches package details and shows a health warning for unhealthy packages.
+  - MCP tool `search_packages` — optional `healthy_only` input to filter out unhealthy packages from search results.
+  - MCP tool `get_package_details` — new tool to fetch full package details (health score, downloads, stars, etc.) for a given `vendor/package` name.
+
+### Changed
+
+- **Dynamic feature list in `ensemble new`:** The multiselect list of features during the AI interview is now built from the known recipe catalog (`KnownRecipes::toPromptOptions()`), so new recipes appear automatically and labels stay in sync. Previously the list was hardcoded and could drift from the catalog.
+
+---
+
 ## [Unreleased]
 
 _(No unreleased changes.)_
