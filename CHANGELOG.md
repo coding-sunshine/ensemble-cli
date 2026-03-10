@@ -6,6 +6,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.2] - 2026-03-10
+
+### Added
+- New `Concerns\ConfiguresProjectEnv` trait with `configureEnsembleAiProviderInProject(string $directory, OutputInterface $output): ?string`. Detects the first available local AI provider (`claude-cli`, `gemini-cli`, `ollama`, LM Studio) via `ConfigStore::detectLocalProvider()` and writes/updates `ENSEMBLE_AI_PROVIDER=<provider>` in the project's `.env` and `.env.example`. Returns the provider name set (or `null` if none detected).
+
+### Changed
+- **`InitCommand`** — now uses `ConfiguresProjectEnv` trait. After installing the Ensemble package it calls `configureEnsembleAiProviderInProject()` and prints a green success line (`✓ AI set to claude-cli in .env for Studio.`) when a local provider is detected. This means `ensemble init` users also get Studio AI without a manual `.env` edit, consistent with `ensemble new`.
+- **`NewCommand`** — the `configureEnsembleAiProviderInProject()` method has been removed from `NewCommand` and replaced with the shared trait; behaviour is unchanged.
+
+---
+
 ## [1.0.2] - 2026-03-10
 
 ### Added
