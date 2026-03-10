@@ -353,6 +353,99 @@ class NewCommand extends Command
     }
 
     /**
+     * Check for a newer version of ensemble-cli and warn the user.
+     */
+    protected function checkForUpdate(InputInterface $input, OutputInterface $output): void
+    {
+        $package = 'coding-sunshine/ensemble-cli';
+        $version = $this->getApplication()->getVersion();
+        $versionData = $this->getLatestVersionData($package);
+
+        if ($versionData === false) {
+            return;
+        }
+
+        $data = json_decode($versionData, true);
+        $latestVersion = ltrim($data['packages'][$package][0]['version'] ?? $version, 'v');
+
+        if (version_compare($version, $latestVersion) !== -1) {
+            return;
+        }
+
+        $output->writeln('');
+        $output->writeln("  <bg=yellow;fg=black> WARN </> A new version of Ensemble is available. You have <options=bold>{$version}</> installed, the latest is <options=bold>{$latestVersion}</>.");
+        $output->writeln("  Run <options=bold>composer global update coding-sunshine/ensemble-cli</> to update.");
+        $output->writeln('');
+    }
+
+    /**
+     * Fetch latest version data from Packagist with 24-hour local cache.
+     */
+    protected function getLatestVersionData(string $package): string|false
+    {
+        $packagePrefix  = str_replace('/', '-', $package);
+        $cachedPath     = sys_get_temp_dir().DIRECTORY_SEPARATOR.$packagePrefix.'-version-check.json';
+        $lastModifiedPath = sys_get_temp_dir().DIRECTORY_SEPARATOR.$packagePrefix.'-last-modified';
+
+        $cacheExists     = file_exists($cachedPath);
+        $cacheLastWrittenAt = $cacheExists ? filemtime($cachedPath) : 0;
+
+        if ($cacheLastWrittenAt > time() - 86400) {
+            return file_get_contents($cachedPath);
+        }
+
+        $lastModified = file_exists($lastModifiedPath) ? file_get_contents($lastModifiedPath) : null;
+
+        $curl = curl_init();
+
+        $headers = ['User-Agent: Ensemble CLI'];
+
+        if ($lastModified) {
+            $headers[] = "If-Modified-Since: {$lastModified}";
+        }
+
+        curl_setopt_array($curl, [
+            CURLOPT_URL            => "https://repo.packagist.org/p2/{$package}.json",
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HEADER         => true,
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT        => 5,
+        ]);
+
+        $response = curl_exec($curl);
+        $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $headerSize = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+
+        curl_close($curl);
+
+        if ($response === false || $httpCode === 0) {
+            return $cacheExists ? file_get_contents($cachedPath) : false;
+        }
+
+        $responseHeaders = substr($response, 0, $headerSize);
+        $result          = substr($response, $headerSize);
+
+        if (preg_match('/^Last-Modified:\s*(.+)$/mi', $responseHeaders, $matches)) {
+            file_put_contents($lastModifiedPath, trim($matches[1]));
+        }
+
+        if ($httpCode === 304 && $cacheExists) {
+            touch($cachedPath);
+
+            return file_get_contents($cachedPath);
+        }
+
+        if ($httpCode === 200 && $result !== false) {
+            file_put_contents($cachedPath, $result);
+
+            return $result;
+        }
+
+        return $cacheExists ? file_get_contents($cachedPath) : false;
+    }
+
+    /**
      * Display the Ensemble header with gradient colors.
      *
      * @param  \Symfony\Component\Console\Output\OutputInterface  $output
@@ -430,6 +523,8 @@ class NewCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        $this->checkForUpdate($input, $output);
+
         $this->validateDatabaseOption($input);
 
         $this->ensureSchemaLoaded($input);

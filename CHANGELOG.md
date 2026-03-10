@@ -6,6 +6,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.0.2] - 2026-03-10
+
+### Added
+- Self-update check: `ensemble new` now warns when a newer version of `ensemble-cli` is available on Packagist, with a one-line update command. Result is cached locally for 24 hours (no network hit on repeated runs).
+
+### Fixed
+- Version string in `bin/ensemble` corrected from `0.1.0` → `1.0.2`.
+
+---
+
 ## [1.0.0] - 2026-03-10
 
 ### Added

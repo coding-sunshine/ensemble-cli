@@ -9,7 +9,7 @@ if (isset($_composer_autoload_path)) {
     require __DIR__.'/../vendor/autoload.php';
 }
 
-$app = new Symfony\Component\Console\Application('Laravel Ensemble', '1.0.0');
+$app = new Symfony\Component\Console\Application('Laravel Ensemble', '1.0.2');
 
 $commands = [
     new CodingSunshine\Ensemble\Console\NewCommand,
