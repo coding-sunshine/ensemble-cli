@@ -24,6 +24,7 @@ use function Laravel\Prompts\warning;
 class InitCommand extends Command
 {
     use Concerns\ConfiguresPrompts;
+    use Concerns\ConfiguresProjectEnv;
     use Concerns\DisplaysDryRun;
     use Concerns\ResolvesAIProvider;
 
@@ -101,6 +102,12 @@ class InitCommand extends Command
 
         $this->installRecipePackages($directory, $schema, $input, $output);
         $this->installEnsemblePackage($directory, $input, $output);
+
+        // Set ENSEMBLE_AI_PROVIDER in .env when a local provider is detected so Studio works out of the box
+        $provider = $this->configureEnsembleAiProviderInProject($directory, $output);
+        if ($provider !== null) {
+            $output->writeln('  <fg=green>✓</> AI set to <comment>'.$provider.'</comment> in .env for Studio.');
+        }
 
         return Command::SUCCESS;
     }

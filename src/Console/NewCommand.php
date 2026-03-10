@@ -34,6 +34,7 @@ use function Laravel\Prompts\warning;
 class NewCommand extends Command
 {
     use Concerns\ConfiguresPrompts;
+    use Concerns\ConfiguresProjectEnv;
     use Concerns\DisplaysDryRun;
     use Concerns\InteractsWithHerdOrValet;
     use Concerns\ResolvesAIProvider;
@@ -707,6 +708,9 @@ class NewCommand extends Command
             // Run ensemble:doctor inside the new project and surface any issues
             $this->runEnsembleDoctor($directory, $output);
 
+            // Set ENSEMBLE_AI_PROVIDER in .env when a local provider is detected so Studio works out of the box
+            $this->configureEnsembleAiProviderInProject($directory, $output);
+
             $this->printEnsembleNextSteps($name, $directory, $output);
 
             $output->writeln('  New to Laravel? Check out our <href=https://laravel.com/docs/installation#next-steps>documentation</>. <options=bold>Build something amazing!</>');
@@ -813,7 +817,10 @@ class NewCommand extends Command
         // If no AI provider found, nudge the user
         $config = new \CodingSunshine\Ensemble\Config\ConfigStore();
         $localProvider = $config->detectLocalProvider();
-        if ($localProvider === null && ! getenv('ENSEMBLE_API_KEY') && ! getenv('ANTHROPIC_API_KEY') && ! getenv('OPENAI_API_KEY')) {
+        if ($localProvider !== null) {
+            $output->writeln("  <fg=green>✓</> <options=bold>AI</> set to <comment>{$localProvider}</comment> in .env — Studio chat will work.");
+            $output->writeln('');
+        } elseif (! getenv('ENSEMBLE_API_KEY') && ! getenv('ANTHROPIC_API_KEY') && ! getenv('OPENAI_API_KEY')) {
             $output->writeln('  <fg=yellow>No AI provider detected.</>');
             $output->writeln('  For free local AI, install <comment>claude-cli</comment> or <comment>gemini-cli</comment>:');
             $output->writeln('    <comment>npm install -g @anthropic-ai/claude-code</comment>');
